@@ -1,3 +1,12 @@
+# Mac
+**/.DS_Store
+
+# Project
+output/
+graphs/
+batch_data/
+tf_log/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
