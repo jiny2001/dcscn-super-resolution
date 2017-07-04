@@ -4,30 +4,32 @@ by [Jin Yamanaka](https://github.com/jiny2001), Shigesumi Kuwashima and [Takio K
 
 ## Overview
 
-This is a tensorflow implementation of ÅgFast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in NetworkÅh, a deep learning based Single-Image Super-Resolution (SISR) model. We named it DCSCN.
+This is a tensorflow implementation of "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network", a deep learning based Single-Image Super-Resolution (SISR) model. We named it DCSCN.
 
 The model structure is like below. We use Deep CNN with Residual Net, Skip Connection and Network in Network. A combination of Deep CNNs and Skip connection layers is used as a feature extractor for image features on both local and global area. Parallelized 1x1 CNNs, like the one called Network in Network, is also used for image reconstruction.
 
-![alt tag](https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1.jpeg)
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1.jpeg" width="800">
+
 
 Sample result is here.
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="800">
 
-![alt tag](https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png)
 
 Our model, DCSCN is much lighter than other Deep Learning based SISR models. Here is a comparison chart of performance vs computation complexity from our paper.
 
-![alt tag](https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/compare.png)
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/compare.png" width="550">
 
 
 ## requirements
 
 python > 3.5
+
 tensorflow > 1.0, scipy, numpy and pillow
 
 
 ## result of PSNR
 
-The result of default parameter is here. You can have even better PSNR than below with using larger filters or deeper layers with our model.
+The sample result of default parameter is here. You can have even better PSNR than below with using larger filters or deeper layers with our model.
 
 | DataSet | Bicubic | SRCN | SelfEx | DRCN | VDSR | DCSCN (ours) |
 |:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|
@@ -37,7 +39,7 @@ The result of default parameter is here. You can have even better PSNR than belo
 
 ## evaluate
 
-Learned weights for some parameters are included in this GitHub. Execute **evaluate.py** with these args below and you get results in **output** folder. When you want to evaluate with other parameters, try training before then evaluate with same parameters as training have done.
+Learned weights for some parameters are included in this GitHub. Execute **evaluate.py** with these args below and you get results in **output** folder. When you want to evaluate with other parameters, try training first then evaluate with same parameters as training have done.
 
 
 ```
@@ -72,15 +74,3 @@ python augmentation.py --dataset yang91 --augment_level 4
 python augmentation.py --dataset yang91 --augment_level 8
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
