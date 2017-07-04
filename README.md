@@ -55,6 +55,9 @@ python evaluate.py --test_dataset set14 --dataset yang_bsd_4 --save_results True
 
 You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg. There are some other hyper paramters to train, check [args.py](https://github.com/jiny2001/dcscn-super-resolution/blob/master/helper/args.py) to use other training parameters.
 
+Each training and evaluation result will be added to **log.txt**.
+
+
 ```
 # training with yang91 dataset
 python train.py --dataset yang91
@@ -75,3 +78,13 @@ python augmentation.py --dataset yang91 --augment_level 4
 python augmentation.py --dataset yang91 --augment_level 8
 
 ```
+
+## visualization
+
+During the training, tensorboard log is available. You can use "--save_weights True" to add histogram and stddev logging of each weights. Those are logged under **tf_log** directory.
+
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/model.png" width="600">
+
+Also we log average PSNR of traing and testing, and then generate csv and plot files under **graphs** directory. Please note training PSNR contains dropout factor so it will be less than test PSNR. This graph is from training our compact version of DCSCN.
+
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/graph.png" width="600">
