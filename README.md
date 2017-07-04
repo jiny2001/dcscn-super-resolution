@@ -11,7 +11,7 @@ The model structure is like below. We use Deep CNN with Residual Net, Skip Conne
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1.jpeg" width="800">
 
 
-Sample result is here.
+## Sample result
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="864">
 
@@ -21,14 +21,14 @@ Our model, DCSCN is much lighter than other Deep Learning based SISR models. Her
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/compare.png" width="600">
 
 
-## requirements
+## Requirements
 
 python > 3.5
 
 tensorflow > 1.0, scipy, numpy and pillow
 
 
-## result of PSNR
+## Result of PSNR
 
 The sample result of default parameter is here. You can have even better PSNR than below with using larger filters or deeper layers with our model.
 
@@ -38,7 +38,7 @@ The sample result of default parameter is here. You can have even better PSNR th
 |Set14 x2|30.24|32.42|32.22|33.04|33.03|33.04|
 |BSD100 x2|29.56|31.36|31.18|31.85|31.90|31.90|
 
-## evaluate
+## Evaluate
 
 Learned weights for some parameters are included in this GitHub. Execute **evaluate.py** with these args below and you get results in **output** folder. When you want to evaluate with other parameters, try training first then evaluate with same parameters as training have done.
 
@@ -51,7 +51,7 @@ python evaluate.py --test_dataset set14 --dataset yang_bsd_4 --save_results True
 python evaluate.py --test_dataset set14 --dataset yang_bsd_4 --save_results True --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
 ```
 
-## how to train
+## How to train
 
 You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg. There are some other hyper paramters to train, check [args.py](https://github.com/jiny2001/dcscn-super-resolution/blob/master/helper/args.py) to use other training parameters.
 
