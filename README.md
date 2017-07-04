@@ -12,12 +12,13 @@ The model structure is like below. We use Deep CNN with Residual Net, Skip Conne
 
 
 Sample result is here.
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="800">
+
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="864">
 
 
 Our model, DCSCN is much lighter than other Deep Learning based SISR models. Here is a comparison chart of performance vs computation complexity from our paper.
 
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/compare.png" width="550">
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/compare.png" width="600">
 
 
 ## requirements
@@ -52,7 +53,7 @@ python evaluate.py --test_dataset set14 --dataset yang_bsd_4 --save_results True
 
 ## how to train
 
-You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg.
+You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg. There are some other hyper paramters to train, check [args.py](https://github.com/jiny2001/dcscn-super-resolution/blob/master/helper/args.py) to use other training parameters.
 
 ```
 # training with yang91 dataset
