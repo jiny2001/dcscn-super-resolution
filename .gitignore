@@ -108,3 +108,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+\.idea/
+
+log\.txt
