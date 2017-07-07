@@ -421,7 +421,7 @@ class SuperResolution:
 
 		self.saver.restore(self.sess, filename)
 		if output_log:
-			print("Model restored [ %s ]." % filename)
+			logging.info("Model restored [ %s ]." % filename)
 
 	def train_batch(self):
 

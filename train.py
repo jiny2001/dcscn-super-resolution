@@ -40,15 +40,13 @@ def main(not_parsed_args):
 
 	for i in range(FLAGS.tests):
 
-		model.init_all_variables(load_model_name=FLAGS.load_model_name)
-
 		train(model, FLAGS, i)
 
 		total_psnr = total_mse = 0
 		for filename in test_filenames:
 			mse = model.do_super_resolution_for_evaluate(filename, FLAGS.output_dir, output=i is (FLAGS.tests - 1))
 			total_mse += mse
-			total_psnr += util.get_psnr(mse)
+			total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
 
 		logging.info("\nTrial(%d) %s" % (i, util.get_now_date()))
 		model.print_steps_completed(output_to_logging=True)
@@ -64,6 +62,8 @@ def main(not_parsed_args):
 
 
 def train(model, flags, trial):
+
+	model.init_all_variables(load_model_name=flags.load_model_name)
 	model.init_train_step()
 	model.init_epoch_index()
 	model.print_status(model.evaluate())
@@ -86,6 +86,7 @@ def train(model, flags, trial):
 				min_mse = mse
 
 	model.end_train_step()
+	model.save_model(flags.checkpoint_dir, trial)
 	model.save_graphs(flags.graph_dir, trial)
 
 	mse = model.evaluate()
