@@ -4,7 +4,7 @@ by [Jin Yamanaka](https://github.com/jiny2001), Shigesumi Kuwashima and [Takio K
 
 ## Overview
 
-This is a tensorflow implementation of "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network", a deep learning based Single-Image Super-Resolution (SISR) model. We named it DCSCN.
+This is a tensorflow implementation of "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network", a deep learning based Single-Image Super-Resolution (SISR) model. We named it **DCSCN**.
 
 The model structure is like below. We use Deep CNN with Residual Net, Skip Connection and Network in Network. A combination of Deep CNNs and Skip connection layers is used as a feature extractor for image features on both local and global area. Parallelized 1x1 CNNs, like the one called Network in Network, is also used for image reconstruction.
 
@@ -66,7 +66,7 @@ python train.py --dataset yang91
 python train.py --dataset yang91 --filters 128 --layers 10
 ```
 
-## data augmentation
+## Data augmentation
 
 To get a better performance, data augmentation is neede. You can use **augmentation.py** to build a augmented dataset. Augment level 4 means it will add right-left, top-bottom and right-left and top-bottom fillped images to make a 4 times bigger dataset. And there will be **ynag91_4** directory as a augmented datase.
 
@@ -79,7 +79,7 @@ python augmentation.py --dataset yang91 --augment_level 8
 
 ```
 
-## visualization
+## Visualization
 
 During the training, tensorboard log is available. You can use "--save_weights True" to add histogram and stddev logging of each weights. Those are logged under **tf_log** directory.
 
