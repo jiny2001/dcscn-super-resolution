@@ -126,12 +126,9 @@ class DataSet:
 
 		for i in range(count):
 			if input_batch:
-				# self.images[i] = util.load_image_data(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.npy" % i, print_console=False)
-				# quad_image = util.load_image_data(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.npy" % i, print_console=False)
 				self.images[i] = util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % i, print_console=False)
 				quad_image = util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % i, print_console=False)
 			else:
-				# quad_image = util.load_image_data(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.npy" % i, print_console=False)
 				quad_image = util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % i, print_console=False)
 
 			convert_to_multi_channel_image(self.quad_images[i], quad_image, self.scale)

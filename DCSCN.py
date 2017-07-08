@@ -568,17 +568,17 @@ class SuperResolution:
 
 		return image
 
-	def do_super_resolution(self, file_path, scale, output_folder="output"):
+	def do_super_resolution(self, file_path, scale, output_directory="output"):
 
 		filename, extension = os.path.splitext(file_path)
-		output_folder += "/"
+		output_directory += "/"
 		org_image = util.load_image(file_path)
-		util.save_image(output_folder + file_path, org_image)
+		util.save_image(output_directory + file_path, org_image)
 
 		if len(org_image.shape) >= 3 or org_image.shape[2] == 3 and self.channels == 1:
 			input_y_image = util.convert_rgb_to_y(org_image, jpeg_mode=self.jpeg_mode)
 			output_y_image = self.do(input_y_image)
-			util.save_image(output_folder + filename + "_result_y" + extension, output_y_image)
+			util.save_image(output_directory + filename + "_result_y" + extension, output_y_image)
 
 			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(util.resize_image_by_pil(org_image, scale),
 			                                               jpeg_mode=self.jpeg_mode)
@@ -586,13 +586,13 @@ class SuperResolution:
 		else:
 			image = self.do(org_image)
 
-		util.save_image(output_folder + filename + "_result" + extension, image)
+		util.save_image(output_directory + filename + "_result" + extension, image)
 		return 0
 
-	def do_super_resolution_for_evaluate(self, file_path, output_folder="output", output=True, print_console=True):
+	def do_super_resolution_for_evaluate(self, file_path, output_directory="output", output=True, print_console=True):
 
 		filename, extension = os.path.splitext(file_path)
-		output_folder += "/"
+		output_directory += "/"
 		true_image = util.set_image_alignment(util.load_image(file_path), self.scale)
 
 		if true_image.shape[2] == 3 and self.channels == 1:
@@ -610,13 +610,13 @@ class SuperResolution:
 				output_color_image = util.convert_y_and_cbcr_to_rgb(output_y_image, true_ycbcr_image[:, :, 1:3],
 				                                                    jpeg_mode=self.jpeg_mode)
 
-				util.save_image(output_folder + file_path, true_image)
-				util.save_image(output_folder + filename + "_input" + extension, input_y_image)
-				util.save_image(output_folder + filename + "_input_bicubic" + extension, input_bicubic_y_image)
-				util.save_image(output_folder + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
-				util.save_image(output_folder + filename + "_result" + extension, output_y_image)
-				util.save_image(output_folder + filename + "_result_c" + extension, output_color_image)
-				util.save_image(output_folder + filename + "_loss" + extension, loss_image)
+				util.save_image(output_directory + file_path, true_image)
+				util.save_image(output_directory + filename + "_input" + extension, input_y_image)
+				util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_y_image)
+				util.save_image(output_directory + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
+				util.save_image(output_directory + filename + "_result" + extension, output_y_image)
+				util.save_image(output_directory + filename + "_result_c" + extension, output_color_image)
+				util.save_image(output_directory + filename + "_loss" + extension, loss_image)
 			else:
 				true_y_image = util.convert_rgb_to_y(true_image, jpeg_mode=self.jpeg_mode)
 				output_y_image = self.do(input_y_image)
@@ -629,8 +629,8 @@ class SuperResolution:
 			output_image = self.do(input_image)
 			mse = util.compute_mse(true_image, output_image, border_size=self.scale)
 			if output:
-				util.save_image(output_folder + file_path, true_image)
-				util.save_image(output_folder + filename + "_result" + extension, output_image)
+				util.save_image(output_directory + file_path, true_image)
+				util.save_image(output_directory + filename + "_result" + extension, output_image)
 
 		if print_console:
 			print("MSE:%f PSNR:%f" % (mse, util.get_psnr(mse)))

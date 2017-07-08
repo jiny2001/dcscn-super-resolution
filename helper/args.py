@@ -15,7 +15,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer("filters", 96, "Number of CNN Filters")
 flags.DEFINE_integer("min_filters", 32, "Number of the last CNN Filters")
 flags.DEFINE_integer("nin_filters", 64, "Number of Filters of A1 in Reconstruction network")
-flags.DEFINE_integer("nin_filters2", 0, "Number of Filters of B1 and B2 in Reconstruction. If 0, it will be half of a1")
+flags.DEFINE_integer("nin_filters2", 0, "Number of Filters of B1 and B2 in Reconstruction. If 0, it will be half of A1")
 flags.DEFINE_integer("cnn_size", 3, "Size of CNN filters")
 flags.DEFINE_integer("layers", 7, "Number of layers of CNNs")
 flags.DEFINE_boolean("nin", True, "Use Network In Network")

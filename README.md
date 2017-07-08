@@ -68,7 +68,7 @@ python train.py --dataset yang91 --filters 128 --layers 10
 
 ## Data augmentation
 
-To get a better performance, data augmentation is neede. You can use **augmentation.py** to build a augmented dataset. Augment level 4 means it will add right-left, top-bottom and right-left and top-bottom fillped images to make a 4 times bigger dataset. And there will be **ynag91_4** directory as a augmented datase.
+To get a better performance, data augmentation is needed. You can use **augmentation.py** to build an augmented dataset. The arg, augment level 4, means it will add right-left, top-bottom and right-left and top-bottom fillped images to make 4 times bigger dataset. And there **ynag91_4** directory will be generated as an augmented dataset.
 
 ```
 # build 4x augmented dataset for yang91 dataset (will add flipped images)

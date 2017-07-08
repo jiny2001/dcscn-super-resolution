@@ -52,7 +52,7 @@ def test(model, test_data):
 	total_psnr = total_mse = 0
 
 	for filename in test_filenames:
-		mse = model.do_super_resolution_for_evaluate(filename, output_folder=FLAGS.output_dir, output=FLAGS.save_results)
+		mse = model.do_super_resolution_for_evaluate(filename, output_directory=FLAGS.output_dir, output=FLAGS.save_results)
 		total_mse += mse
 		total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
 
