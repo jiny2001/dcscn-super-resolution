@@ -1,5 +1,6 @@
 """
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
+URL: https://arxiv.org/abs/1707.05425
 
 DCSCN model implementation
 """

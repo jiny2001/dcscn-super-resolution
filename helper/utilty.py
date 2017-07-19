@@ -98,6 +98,10 @@ def set_logging(filename, stream_log_level, file_log_level, tf_log_level):
 
 	tf.logging.set_verbosity(tf_log_level)
 
+	# optimizing logging
+	logging._srcfile = None
+	logging.logThreads = 0
+	logging.logProcesses = 0
 
 def save_image(filename, image, print_console=True):
 	if len(image.shape) >= 3 and image.shape[2] == 1:

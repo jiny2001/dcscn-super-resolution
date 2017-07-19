@@ -1,7 +1,9 @@
 """
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
+URL: https://arxiv.org/abs/1707.05425
 Author: Jin Yamanaka
 Github: https://github.com/jiny2001/dcscn-image-super-resolution
+
 
 Testing Environment: Python 3.6.1, tensorflow 1.2.0
 """
