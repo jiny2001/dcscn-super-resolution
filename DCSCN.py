@@ -538,16 +538,11 @@ class SuperResolution:
 
 	def do(self, input_image, bicubic_input_image=None):
 
-		h = input_image.shape[0]
-		w = input_image.shape[1]
-		if len(input_image.shape) == 2:
-			ch = 1
-		else:
-			ch = input_image.shape[2]
+		h, w = input_image.shape[:2]
+		ch = input_image.shape[2] if len(input_image.shape) > 2 else 1
 
 		if self.max_value != 255.0:
 			input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
-		quad_image = np.zeros([1, h, w, self.output_channels])  # type: np.ndarray
 
 		if bicubic_input_image is not None:
 			bicubic_image = bicubic_input_image
@@ -555,6 +550,8 @@ class SuperResolution:
 			bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method="bicubic")
 		else:
 			bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method="nearest")
+
+		quad_image = np.zeros([1, h, w, self.output_channels])  # type: np.ndarray
 		loader.convert_to_multi_channel_image(quad_image[0], bicubic_image, self.scale)
 
 		y = self.sess.run(self.y_, feed_dict={self.x: input_image.reshape(1, h, w, ch), self.x2: quad_image,
@@ -569,28 +566,32 @@ class SuperResolution:
 
 		return image
 
-	def do_super_resolution(self, file_path, scale, output_directory="output"):
+	def do_for_file(self, file_path, output_folder="output"):
 
 		filename, extension = os.path.splitext(file_path)
-		output_directory += "/"
+		output_folder += "/"
 		org_image = util.load_image(file_path)
-		util.save_image(output_directory + file_path, org_image)
+		util.save_image(output_folder + file_path, org_image)
 
-		if len(org_image.shape) >= 3 or org_image.shape[2] == 3 and self.channels == 1:
+		if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
 			input_y_image = util.convert_rgb_to_y(org_image, jpeg_mode=self.jpeg_mode)
+			scaled_image = util.resize_image_by_pil(input_y_image, self.scale)
+			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
 			output_y_image = self.do(input_y_image)
-			util.save_image(output_directory + filename + "_result_y" + extension, output_y_image)
+			util.save_image(output_folder + filename + "_result_y" + extension, output_y_image)
 
-			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(util.resize_image_by_pil(org_image, scale),
+			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(util.resize_image_by_pil(org_image, self.scale),
 			                                               jpeg_mode=self.jpeg_mode)
 			image = util.convert_y_and_cbcr_to_rgb(output_y_image, scaled_ycbcr_image[:, :, 1:3], jpeg_mode=self.jpeg_mode)
 		else:
+			scaled_image = util.resize_image_by_pil(org_image, self.scale)
+			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
 			image = self.do(org_image)
 
-		util.save_image(output_directory + filename + "_result" + extension, image)
+		util.save_image(output_folder + filename + "_result" + extension, image)
 		return 0
 
-	def do_super_resolution_for_evaluate(self, file_path, output_directory="output", output=True, print_console=True):
+	def do_for_evaluate(self, file_path, output_directory="output", output=True, print_console=True):
 
 		filename, extension = os.path.splitext(file_path)
 		output_directory += "/"

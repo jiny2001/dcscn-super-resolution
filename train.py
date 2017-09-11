@@ -46,7 +46,7 @@ def main(not_parsed_args):
 
 		total_psnr = total_mse = 0
 		for filename in test_filenames:
-			mse = model.do_super_resolution_for_evaluate(filename, FLAGS.output_dir, output=i is (FLAGS.tests - 1))
+			mse = model.do_for_evaluate(filename, FLAGS.output_dir, output=i is (FLAGS.tests - 1))
 			total_mse += mse
 			total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
 
