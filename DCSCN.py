@@ -26,6 +26,7 @@ class SuperResolution:
 		self.nin_filters = flags.nin_filters
 		self.nin_filters2 = flags.nin_filters2 if flags.nin_filters2 != 0 else flags.nin_filters // 2
 		self.cnn_size = flags.cnn_size
+		self.last_cnn_size = flags.last_cnn_size
 		self.cnn_stride = 1
 		self.layers = flags.layers
 		self.nin = flags.nin
@@ -130,6 +131,8 @@ class SuperResolution:
 				name += "_" + self.dataset
 			if self.batch_image_size != 32:
 				name += "_B%d" % self.batch_image_size
+			if self.last_cnn_size != 1:
+				name += "_L%d" % self.last_cnn_size
 		else:
 			name = "dcscn_%s" % model_name
 
@@ -293,8 +296,7 @@ class SuperResolution:
 				self.H_concat2 = tf.concat(self.H2, 3, name="H_concat2")
 
 				self.W_conv[self.layers + 3], self.H_out = \
-					self.build_conv("L", self.H_concat2, 1, self.nin_filters + self.nin_filters2,
-					                self.output_channels)
+					self.build_conv("L", self.H_concat2, self.last_cnn_size, self.nin_filters + self.nin_filters2, self.output_channels)
 			else:
 				self.W_conv[self.layers], self.B_conv[self.layers], self.H_node = \
 					self.build_conv_and_bias("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters)
