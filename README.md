@@ -94,7 +94,9 @@ python sr.py --file your_file.png --dataset yang91 --filters 128 --layers 10
 
 ## Data augmentation
 
-To get a better performance, data augmentation is needed. You can use **augmentation.py** to build an augmented dataset. The arg, augment_level = 4, means it will add right-left, top-bottom and right-left and top-bottom fillped images to make 4 times bigger dataset. And there **ynag91_4** directory will be generated as an augmented dataset.
+To get a better performance, data augmentation is needed. You can use **augmentation.py** to build an augmented dataset. The arg, augment_level = 4, means it will add right-left, top-bottom and right-left and top-bottom fillped images to make 4 times bigger dataset. And there **yang91_4** directory will be generated as an augmented dataset.
+
+To have better model, you should use larger training data like (BSD200 + Yang91) dataset.
 
 ```
 # build 4x augmented dataset for yang91 dataset (will add flipped images)
