@@ -180,6 +180,9 @@ class DataSets:
 			input_batch_images = util.get_split_images(input_image, self.batch_image_size, stride=self.stride)
 			input_bicubic_batch_images = util.get_split_images(input_bicubic_image, output_window_size,
 			                                                   stride=output_window_stride)
+			if input_batch_images is None or input_bicubic_batch_images is None:
+				continue
+
 			input_count = input_batch_images.shape[0]
 
 			test_batch_images = util.get_split_images(test_image, output_window_size, stride=output_window_stride)
