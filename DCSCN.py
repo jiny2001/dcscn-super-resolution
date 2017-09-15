@@ -422,6 +422,10 @@ class SuperResolution:
 
 		filename = self.checkpoint_dir + "/" + load_model_name + ".ckpt"
 
+		if not os.path.isfile(filename + ".index"):
+			print("Error. Model[%s] is not exist!" % filename)
+			exit(-1)
+
 		self.saver.restore(self.sess, filename)
 		if output_log:
 			logging.info("Model restored [ %s ]." % filename)
