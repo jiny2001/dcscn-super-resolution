@@ -17,7 +17,6 @@ FLAGS = args.get()
 
 
 def main(_):
-
 	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 	model.build_graph()
 	model.build_optimizer()
@@ -27,6 +26,7 @@ def main(_):
 	model.load_model()
 
 	model.do_for_file(FLAGS.file, FLAGS.output_dir)
+
 
 if __name__ == '__main__':
 	tf.app.run()

@@ -64,7 +64,6 @@ def main(not_parsed_args):
 
 
 def train(model, flags, trial):
-
 	model.init_all_variables(load_model_name=flags.load_model_name)
 	model.init_train_step()
 	model.init_epoch_index()

@@ -10,6 +10,9 @@ import os
 import random
 import time
 
+import matplotlib
+
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -296,7 +299,8 @@ class SuperResolution:
 				self.H_concat2 = tf.concat(self.H2, 3, name="H_concat2")
 
 				self.W_conv[self.layers + 3], self.H_out = \
-					self.build_conv("L", self.H_concat2, self.last_cnn_size, self.nin_filters + self.nin_filters2, self.output_channels)
+					self.build_conv("L", self.H_concat2, self.last_cnn_size, self.nin_filters + self.nin_filters2,
+					                self.output_channels)
 			else:
 				self.W_conv[self.layers], self.B_conv[self.layers], self.H_node = \
 					self.build_conv_and_bias("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters)

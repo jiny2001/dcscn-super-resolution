@@ -47,7 +47,6 @@ def main(not_parsed_args):
 
 
 def test(model, test_data):
-
 	test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
 	total_psnr = total_mse = 0
 
