@@ -214,7 +214,17 @@ class DataSets:
 		with open(batch_dir + "/batch_images.ini", "w") as configfile:
 			config.write(configfile)
 
-	def load_batch(self, batch_dir):
+	def load_batch_train(self, batch_dir):
+		""" load already built batch images. """
+
+		config = configparser.ConfigParser()
+		config.read(batch_dir + "/batch_images.ini")
+		count = config.getint("batch", "count")
+
+		self.input.count = count
+		self.true.count = count
+
+	def load_batch_test(self, batch_dir):
 		""" load already built batch images. """
 
 		config = configparser.ConfigParser()
