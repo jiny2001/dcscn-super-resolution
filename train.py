@@ -73,7 +73,7 @@ def train(model, flags, trial):
 
 	while model.lr > flags.end_lr:
 
-		model.build_input_batch()
+		model.build_input_batch(FLAGS.batch_dir + "/" + FLAGS.dataset)
 		model.train_batch()
 
 		if epochs_completed < model.epochs_completed:

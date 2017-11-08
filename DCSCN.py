@@ -19,6 +19,9 @@ import tensorflow as tf
 
 from helper import loader, utilty as util
 
+INPUT_IMAGE_DIR = "input"
+INTERPOLATED_IMAGE_DIR = "interpolated"
+TRUE_IMAGE_DIR = "true"
 
 class SuperResolution:
 	def __init__(self, flags, model_name=""):
@@ -84,8 +87,8 @@ class SuperResolution:
 		# initialize variables
 		self.name = self.get_model_name(model_name)
 		self.batch_input = self.batch_num * [None]
-		self.batch_input_quad = self.batch_num * [None]
-		self.batch_true_quad = self.batch_num * [None]
+		self.batch_input_quad = np.zeros(shape=[self.batch_num, self.batch_image_size, self.batch_image_size, self.scale * self.scale])
+		self.batch_true_quad = np.zeros(shape=[self.batch_num, self.batch_image_size, self.batch_image_size, self.scale * self.scale])
 		self.receptive_fields = 2 * self.layers + self.cnn_size - 2
 		self.complexity = 0
 
@@ -159,11 +162,12 @@ class SuperResolution:
 
 		if not datasets.is_batch_exist(batch_dir):
 			datasets.build_batch(data_dir, batch_dir)
-		datasets.load_batch(batch_dir)
 
 		if target == "training":
+			datasets.load_batch_train(batch_dir)
 			self.train = datasets
 		else:
+			datasets.load_batch_test(batch_dir)
 			self.test = datasets
 
 	def init_epoch_index(self):
@@ -212,7 +216,7 @@ class SuperResolution:
 
 		return w, h
 
-	def build_input_batch(self):
+	def build_input_batch(self,batch_dir):
 
 		for i in range(self.batch_num):
 			if self.index_in_epoch >= self.train.input.count:
@@ -220,9 +224,11 @@ class SuperResolution:
 				self.epochs_completed += 1
 
 			image_no = self.batch_index[self.index_in_epoch]
-			self.batch_input[i] = self.train.input.images[image_no]
-			self.batch_input_quad[i] = self.train.input.quad_images[image_no]
-			self.batch_true_quad[i] = self.train.true.quad_images[image_no]
+			self.batch_input[i] = util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_no, print_console=False)
+			batch_input_quad = util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_no, print_console=False)
+			loader.convert_to_multi_channel_image(self.batch_input_quad[i], batch_input_quad, self.scale)
+			batch_true_quad = util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_no, print_console=False)
+			loader.convert_to_multi_channel_image(self.batch_true_quad[i], batch_true_quad, self.scale)
 			self.index_in_epoch += 1
 
 	def build_graph(self):
