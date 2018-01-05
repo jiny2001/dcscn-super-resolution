@@ -433,10 +433,13 @@ def compute_mse(image1, image2, border_size=0):
 	if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
 		return None
 
-	if image1.dtype == np.uint8:
-		image1 = image1.astype(np.double)
-	if image2.dtype == np.uint8:
-		image2 = image2.astype(np.double)
+	if image1.dtype != np.uint8:
+		image1 = image1.astype(np.int)
+	image1 = image1.astype(np.double)
+
+	if image2.dtype != np.uint8:
+		image2 = image2.astype(np.int)
+	image2 = image2.astype(np.double)
 
 	mse = 0.0
 	for i in range(border_size, image1.shape[0] - border_size):
