@@ -71,7 +71,7 @@ flags.DEFINE_boolean("initialise_tf_log", True, "Clear all tensorboard log befor
 flags.DEFINE_boolean("save_loss", True, "Save loss")
 flags.DEFINE_boolean("save_weights", False, "Save weights and biases")
 flags.DEFINE_boolean("save_images", False, "Save CNN weights as images")
-flags.DEFINE_boolean("save_images_num", 10, "Number of CNN images saved")
+flags.DEFINE_integer("save_images_num", 10, "Number of CNN images saved")
 
 
 def get():
