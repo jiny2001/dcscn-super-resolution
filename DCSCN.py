@@ -883,7 +883,6 @@ class SuperResolution:
 				util.save_image(output_directory + filename + "_loss" + extension, loss_image)
 			else:
 				true_y_image = util.convert_rgb_to_y(true_image, jpeg_mode=self.jpeg_mode)
-				input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale)
 				output_y_image = self.do(input_y_image)
 				mse = util.compute_mse(true_y_image, output_y_image, border_size=self.scale)
 
@@ -891,8 +890,7 @@ class SuperResolution:
 
 			# for monochrome images
 			input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale, alignment=self.scale)
-			input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale)
-			output_image = self.do(input_image, input_bicubic_y_image)
+			output_image = self.do(input_image)
 			mse = util.compute_mse(true_image, output_image, border_size=self.scale)
 			if output:
 				util.save_image(output_directory + file_path, true_image)
