@@ -408,7 +408,9 @@ class SuperResolution:
 			return None
 
 	def build_activator(self, hidden, features, activator=None, leaky_relu_alpha=0.1, name=""):
-		if activator == "relu":
+		if activator is None:
+			return
+		elif activator == "relu":
 			hidden = tf.nn.relu(hidden, name=name + "_relu")
 		elif activator == "sigmoid":
 			hidden = tf.nn.sigmoid(hidden, name=name + "_sigmoid")

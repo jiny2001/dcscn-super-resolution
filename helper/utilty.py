@@ -8,23 +8,25 @@ import configparser
 import datetime
 import logging
 import math
+import os
+import time
+from os import listdir
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-from os import listdir
+import tensorflow as tf
+from PIL import Image
 from os.path import isfile, join
 from scipy import misc
 from sklearn.manifold import TSNE
-import time
-import tensorflow as tf
-from PIL import Image
 
 MARKERS = [['red', 100, 'o'], ['black', 100, 'x'], ['cyan', 100, 'd'], ['blue', 150, '1'], ['purple', 100, 's'],
            ['green', 100, 'v'], ['yellow', 100, 'o'], ['orange', 100, 'o'], ['magenta', 100, 'o'], ['pink', 100, 'o'],
            ['brown', 100, 'o'], ['darkgreen', 100, 'o']]
 MARKERS2 = [['red', 300, 'o'], ['black', 300, 'x'], ['cyan', 300, 'd'], ['blue', 450, '1'], ['purple', 300, 's'],
-           ['green', 300, 'v'], ['yellow', 300, 'o'], ['orange', 300, 'o'], ['magenta', 300, 'o'], ['pink', 300, 'o'],
-           ['brown', 300, 'o'], ['darkgreen', 300, 'o']]
+            ['green', 300, 'v'], ['yellow', 300, 'o'], ['orange', 300, 'o'], ['magenta', 300, 'o'], ['pink', 300, 'o'],
+            ['brown', 300, 'o'], ['darkgreen', 300, 'o']]
+
 
 class Timer:
 	def __init__(self, timer_count=100):
@@ -60,10 +62,12 @@ def make_dir(directory):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 
+
 def delete_dir(directory):
 	if os.path.exists(directory):
 		clean_dir(directory)
 		os.rmdir(directory)
+
 
 def get_files_in_directory(path):
 	if not path.endswith('/'):
@@ -215,6 +219,7 @@ def set_image_alignment(image, alignment):
 
 	return image
 
+
 def resize_image_by_pil(image, scale, resampling_method="bicubic"):
 	width, height = image.shape[1], image.shape[0]
 	new_width = int(width * scale)
@@ -328,20 +333,19 @@ def get_split_images(image, window_size, stride=None, enable_duplicate=False):
 
 # divide images with given stride. will return variable size images. not allowed to be overlapped or less except frame.
 def get_divided_images(image, window_size, stride, min_size=0):
-
 	h, w = image.shape[:2]
 	divided_images = []
 
 	for y in range(0, h, stride):
 		for x in range(0, w, stride):
 
-			new_h = window_size if y+window_size <= h else h - y
-			new_w = window_size if x+window_size <= w else w - x
+			new_h = window_size if y + window_size <= h else h - y
+			new_w = window_size if x + window_size <= w else w - x
 			if new_h < min_size or new_w < min_size:
 				continue
 
-#			print ("(%d,%d-%d,%d)"%(x,y, x+new_w, y+new_h))
-			divided_images.append( image[y:y + new_h, x:x + new_w, :] )
+			#			print ("(%d,%d-%d,%d)"%(x,y, x+new_w, y+new_h))
+			divided_images.append(image[y:y + new_h, x:x + new_w, :])
 
 	return divided_images
 
@@ -363,8 +367,8 @@ def he_initializer(shape):
 	stddev = math.sqrt(2.0 / n)
 	return tf.truncated_normal(shape=shape, stddev=stddev)
 
-def upsample_filter(size):
 
+def upsample_filter(size):
 	factor = (size + 1) // 2
 	if size % 2 == 1:
 		center = factor - 1
@@ -374,15 +378,16 @@ def upsample_filter(size):
 
 	return (1 - abs(og[0] - center) / factor) * (1 - abs(og[1] - center) / factor)
 
+
 def get_upscale_filter_size(scale):
 	return 2 * scale - scale % 2
 
-def upscale_weight(scale, channels, name="weight"):
 
+def upscale_weight(scale, channels, name="weight"):
 	cnn_size = get_upscale_filter_size(scale)
 
-	initial = np.zeros(shape=[cnn_size, cnn_size, channels, channels],dtype=np.float32)
-	filter=upsample_filter(cnn_size)
+	initial = np.zeros(shape=[cnn_size, cnn_size, channels, channels], dtype=np.float32)
+	filter = upsample_filter(cnn_size)
 
 	for i in range(channels):
 		initial[:, :, i, i] = filter
@@ -441,8 +446,8 @@ def add_summaries(scope_name, model_name, var, save_stddev=True, save_mean=False
 			tf.summary.scalar("min/" + model_name, tf.reduce_min(var))
 		tf.summary.histogram(model_name, var)
 
-def log_scalar_value(writer, name, value, step):
 
+def log_scalar_value(writer, name, value, step):
 	summary = tf.Summary(value=[tf.Summary.Value(tag=name, simple_value=value)])
 	writer.add_summary(summary, step)
 
@@ -556,6 +561,7 @@ def print_num_of_total_parameters(output_detail=False, output_to_logging=False):
 			print(parameters_string)
 		print("Total %d variables, %s params" % (len(tf.trainable_variables()), "{:,}".format(total_parameters)))
 
+
 def plot_with_labels(attributes, filename, markers=None, perplexity=25, n_iter=1000):
 	print('Drawing scatter plot on [%s]...' % filename)
 
@@ -576,9 +582,10 @@ def plot_with_labels(attributes, filename, markers=None, perplexity=25, n_iter=1
 			plot_scatter(x, y, marker=markers[i])
 
 	for i in range(8):
-		plt.scatter(-1000 + (i+1)*40, 110, color=MARKERS[i][0], s=MARKERS[i][1] * 9 // 2, marker=MARKERS[i][2])
+		plt.scatter(-1000 + (i + 1) * 40, 110, color=MARKERS[i][0], s=MARKERS[i][1] * 9 // 2, marker=MARKERS[i][2])
 
 	plt.savefig(filename)
+
 
 def plot_scatter(x, y, marker=0):
 	if marker >= len(MARKERS):
