@@ -4,19 +4,27 @@ Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connectio
 utility functions
 """
 
+import configparser
 import datetime
 import logging
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 import os
-import time
 from os import listdir
 from os.path import isfile, join
-
-import numpy as np
+from scipy import misc
+from sklearn.manifold import TSNE
+import time
 import tensorflow as tf
 from PIL import Image
-from scipy import misc
 
+MARKERS = [['red', 100, 'o'], ['black', 100, 'x'], ['cyan', 100, 'd'], ['blue', 150, '1'], ['purple', 100, 's'],
+           ['green', 100, 'v'], ['yellow', 100, 'o'], ['orange', 100, 'o'], ['magenta', 100, 'o'], ['pink', 100, 'o'],
+           ['brown', 100, 'o'], ['darkgreen', 100, 'o']]
+MARKERS2 = [['red', 300, 'o'], ['black', 300, 'x'], ['cyan', 300, 'd'], ['blue', 450, '1'], ['purple', 300, 's'],
+           ['green', 300, 'v'], ['yellow', 300, 'o'], ['orange', 300, 'o'], ['magenta', 300, 'o'], ['pink', 300, 'o'],
+           ['brown', 300, 'o'], ['darkgreen', 300, 'o']]
 
 class Timer:
 	def __init__(self, timer_count=100):
@@ -52,6 +60,10 @@ def make_dir(directory):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 
+def delete_dir(directory):
+	if os.path.exists(directory):
+		clean_dir(directory)
+		os.rmdir(directory)
 
 def get_files_in_directory(path):
 	if not path.endswith('/'):
@@ -98,13 +110,8 @@ def set_logging(filename, stream_log_level, file_log_level, tf_log_level):
 
 	tf.logging.set_verbosity(tf_log_level)
 
-	# optimizing logging
-	logging._srcfile = None
-	logging.logThreads = 0
-	logging.logProcesses = 0
 
-
-def save_image(filename, image, print_console=True):
+def save_image(filename, image, print_console=False):
 	if len(image.shape) >= 3 and image.shape[2] == 1:
 		image = image.reshape(image.shape[0], image.shape[1])
 
@@ -208,15 +215,6 @@ def set_image_alignment(image, alignment):
 
 	return image
 
-
-def resize_image_by_bicubic(image, scale):
-	size = [int(image.shape[0] * scale), int(image.shape[1] * scale)]
-	image = image.reshape(1, image.shape[0], image.shape[1], image.shape[2])
-	tf_image = tf.image.resize_bicubic(image, size=size)
-	image = tf_image.eval()
-	return image.reshape(image.shape[1], image.shape[2], image.shape[3])
-
-
 def resize_image_by_pil(image, scale, resampling_method="bicubic"):
 	width, height = image.shape[1], image.shape[0]
 	new_width = int(width * scale)
@@ -284,7 +282,7 @@ def load_image_data(filename, width=0, height=0, channels=0, alignment=0, print_
 	return image
 
 
-def get_split_images(image, window_size, stride=None, enable_duplicate=True):
+def get_split_images(image, window_size, stride=None, enable_duplicate=False):
 	if len(image.shape) == 3 and image.shape[2] == 1:
 		image = image.reshape(image.shape[0], image.shape[1])
 
@@ -328,6 +326,26 @@ def get_split_images(image, window_size, stride=None, enable_duplicate=True):
 	return windows
 
 
+# divide images with given stride. will return variable size images. not allowed to be overlapped or less except frame.
+def get_divided_images(image, window_size, stride, min_size=0):
+
+	h, w = image.shape[:2]
+	divided_images = []
+
+	for y in range(0, h, stride):
+		for x in range(0, w, stride):
+
+			new_h = window_size if y+window_size <= h else h - y
+			new_w = window_size if x+window_size <= w else w - x
+			if new_h < min_size or new_w < min_size:
+				continue
+
+#			print ("(%d,%d-%d,%d)"%(x,y, x+new_w, y+new_h))
+			divided_images.append( image[y:y + new_h, x:x + new_w, :] )
+
+	return divided_images
+
+
 def xavier_cnn_initializer(shape, uniform=True):
 	fan_in = shape[0] * shape[1] * shape[2]
 	fan_out = shape[0] * shape[1] * shape[3]
@@ -344,6 +362,32 @@ def he_initializer(shape):
 	n = shape[0] * shape[1] * shape[2]
 	stddev = math.sqrt(2.0 / n)
 	return tf.truncated_normal(shape=shape, stddev=stddev)
+
+def upsample_filter(size):
+
+	factor = (size + 1) // 2
+	if size % 2 == 1:
+		center = factor - 1
+	else:
+		center = factor - 0.5
+	og = np.ogrid[:size, :size]
+
+	return (1 - abs(og[0] - center) / factor) * (1 - abs(og[1] - center) / factor)
+
+def get_upscale_filter_size(scale):
+	return 2 * scale - scale % 2
+
+def upscale_weight(scale, channels, name="weight"):
+
+	cnn_size = get_upscale_filter_size(scale)
+
+	initial = np.zeros(shape=[cnn_size, cnn_size, channels, channels],dtype=np.float32)
+	filter=upsample_filter(cnn_size)
+
+	for i in range(channels):
+		initial[:, :, i, i] = filter
+
+	return tf.Variable(initial, name=name)
 
 
 def weight(shape, stddev=0.01, name="weight", uniform=False, initializer="stddev"):
@@ -397,6 +441,11 @@ def add_summaries(scope_name, model_name, var, save_stddev=True, save_mean=False
 			tf.summary.scalar("min/" + model_name, tf.reduce_min(var))
 		tf.summary.histogram(model_name, var)
 
+def log_scalar_value(writer, name, value, step):
+
+	summary = tf.Summary(value=[tf.Summary.Value(tag=name, simple_value=value)])
+	writer.add_summary(summary, step)
+
 
 def get_now_date():
 	d = datetime.datetime.today()
@@ -433,12 +482,13 @@ def compute_mse(image1, image2, border_size=0):
 	if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
 		return None
 
+	image1 = np.clip(image1, 0, 255)
+	image2 = np.clip(image2, 0, 255)
 	if image1.dtype != np.uint8:
-		image1 = image1.astype(np.int)
+		image1 = image1.astype(np.uint8)
 	image1 = image1.astype(np.double)
-
 	if image2.dtype != np.uint8:
-		image2 = image2.astype(np.int)
+		image2 = image2.astype(np.uint8)
 	image2 = image2.astype(np.double)
 
 	mse = 0.0
@@ -505,3 +555,94 @@ def print_num_of_total_parameters(output_detail=False, output_to_logging=False):
 		if output_detail:
 			print(parameters_string)
 		print("Total %d variables, %s params" % (len(tf.trainable_variables()), "{:,}".format(total_parameters)))
+
+def plot_with_labels(attributes, filename, markers=None, perplexity=25, n_iter=1000):
+	print('Drawing scatter plot on [%s]...' % filename)
+
+	if attributes.shape[1] > 2:
+		print('Reducing attributes...')
+		tsne = TSNE(perplexity=perplexity, n_components=2, init='pca', n_iter=n_iter)
+		attributes = tsne.fit_transform(attributes)
+
+	plt.rcParams.update({'font.size': 20})
+	plt.figure(figsize=(40, 40))  # in inches
+
+	for i in range(0, len(attributes)):
+		x, y = attributes[i, :]
+
+		if markers is None:
+			plot_scatter(x, y)
+		else:
+			plot_scatter(x, y, marker=markers[i])
+
+	for i in range(8):
+		plt.scatter(-1000 + (i+1)*40, 110, color=MARKERS[i][0], s=MARKERS[i][1] * 9 // 2, marker=MARKERS[i][2])
+
+	plt.savefig(filename)
+
+def plot_scatter(x, y, marker=0):
+	if marker >= len(MARKERS):
+		marker = len(MARKERS) - 1
+
+	plt.scatter(x, y, color=MARKERS[marker][0], s=MARKERS[marker][1] * 3 // 2, marker=MARKERS[marker][2])
+
+
+def flip(image, type, invert=False):
+	if type == 0:
+		return image
+	elif type == 1:
+		return np.flipud(image)
+	elif type == 2:
+		return np.fliplr(image)
+	elif type == 3:
+		return np.flipud(np.fliplr(image))
+	elif type == 4:
+		return np.rot90(image, 1 if invert is False else -1)
+	elif type == 5:
+		return np.rot90(image, -1 if invert is False else 1)
+	elif type == 6:
+		if invert is False:
+			return np.flipud(np.rot90(image))
+		else:
+			return np.rot90(np.flipud(image), -1)
+	elif type == 7:
+		if invert is False:
+			return np.flipud(np.rot90(image, -1))
+		else:
+			return np.rot90(np.flipud(image), 1)
+
+
+def get_from_ini(filename, section, key, default, create_if_empty=True):
+	config = configparser.ConfigParser()
+	try:
+		with open(filename) as f:
+			config.read_file(f)
+		return config.get(section, key)
+
+	except (IOError, configparser.NoOptionError):
+
+		if create_if_empty:
+			config = configparser.ConfigParser()
+			config.add_section(section)
+			config.set(section, key, str(default))
+
+		with open(filename, "w") as configfile:
+			config.write(configfile)
+
+	return default
+
+
+def scale(data, input_min, input_max, output_min, output_max):
+	if (output_min == input_min and output_max == input_max):
+		return data
+
+	scale = (output_max - output_min) / (input_max - input_min)
+	minimum = - scale * input_min + output_min
+
+	if data.dtype == np.uint8:
+		data = data.astype(np.double)
+
+	data = np.multiply(data, scale)
+	#	data *= scale """ This is faster but also original data will be scaled """
+	data += minimum
+	return data
