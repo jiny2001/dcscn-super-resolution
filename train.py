@@ -95,7 +95,6 @@ def train(model, flags, trial, load_model_name=""):
 
 	model.end_train_step()
 	model.save_model(trial=trial, output_log=True)
-	model.save_graphs(flags.graph_dir, trial)
 
 	model.report_updated_history()
 

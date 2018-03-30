@@ -8,16 +8,12 @@ import random
 import shutil
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
 from helper import loader, utilty as util
 
-#todo: put this in arg
-RESAMPLING_METHOD = "bicubic"
 MODEL_NAME = "dcscn"
-
 
 
 class SuperResolution:
@@ -31,7 +27,7 @@ class SuperResolution:
 		self.last_layers = flags.last_layers
 		self.last_filters = flags.last_filters
 		self.cnn_stride = 1
-		self.layers = 1 + 2 * ((flags.layers - 1) // 2)
+		self.layers = flags.layers
 		self.self_ensemble = flags.self_ensemble
 
 		self.dropout = flags.dropout
@@ -76,8 +72,8 @@ class SuperResolution:
 		self.output_min = flags.output_min
 		self.channels = flags.channels
 		self.jpeg_mode = flags.jpeg_mode
-		self.output_channels = 1  # self.scale * self.scale
-		self.resampling_method = RESAMPLING_METHOD
+		self.output_channels = 1
+		self.resampling_method = flags.resampling_method
 
 		# Environment (all directory name should not contain '/' after )
 		self.checkpoint_dir = flags.checkpoint_dir
@@ -162,7 +158,8 @@ class SuperResolution:
 		if stride_size == 0:
 			stride_size = batch_image_size // 2
 
-		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels, jpeg_mode=self.jpeg_mode)
+		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
+		                           jpeg_mode=self.jpeg_mode)
 
 		if not datasets.is_batch_exist(batch_dir):
 			datasets.build_batch(data_dir, batch_dir)
@@ -176,8 +173,10 @@ class SuperResolution:
 
 			for i in range(self.test.input.count):
 				self.test.input.images[i] = util.scale(self.test.input.images[i], 0, 255, 0, self.input_max)
-				self.test.input.quad_images[i] = util.scale(self.test.input.quad_images[i], 0, 255, self.output_min, self.output_max)
-				self.test.true.quad_images[i] = util.scale(self.test.true.quad_images[i], 0, 255, self.output_min, self.output_max)
+				self.test.input.quad_images[i] = util.scale(self.test.input.quad_images[i], 0, 255, self.output_min,
+				                                            self.output_max)
+				self.test.true.quad_images[i] = util.scale(self.test.true.quad_images[i], 0, 255, self.output_min,
+				                                           self.output_max)
 
 	def open_datasets(self, target, data_dir, batch_image_size, stride_size=0):
 
@@ -288,10 +287,7 @@ class SuperResolution:
 	def build_input_batch(self, batch_dir):
 
 		for i in range(self.batch_num):
-			image_no = random.randrange(self.train.input.count)
-			image = loader.load_random_patch(self.train.true_filenames[image_no], self.batch_image_size * self.scale,
-			                                 self.batch_image_size * self.scale, self.jpeg_mode)
-
+			image = None
 			while image is None:
 				image_no = random.randrange(self.train.input.count)
 				image = loader.load_random_patch(self.train.true_filenames[image_no], self.batch_image_size * self.scale,
@@ -303,13 +299,18 @@ class SuperResolution:
 			# print("[%d,%d-%d,%d,%s]" % (x, y, x + self.batch_image_size * self.scale, y + self.batch_image_size * self.scale,
 			#                             self.train.true_filenames[image_no]))
 
-			# util.save_image("output/%d_input.png" % i, util.resize_image_by_pil(true_image, 1 / self.scale))
-			# util.save_image("output/%d_true.png" % i, true_image)
 
-			self.batch_input[i] = util.scale(util.resize_image_by_pil(image, 1 / self.scale), 0, 255, 0, self.input_max)
-			self.batch_input_quad[i] = util.scale(util.resize_image_by_pil(self.batch_input[i], self.scale), 0, 255, self.output_min, self.output_max)
+			input_image = util.resize_image_by_pil(image, 1 / self.scale)
+			self.batch_input[i] = util.scale(input_image, 0, 255, 0, self.input_max)
+			self.batch_input_quad[i] = util.scale(util.resize_image_by_pil(input_image, self.scale), 0, 255, self.output_min,
+			                                      self.output_max)
 			self.batch_true_quad[i] = util.scale(image, 0, 255, self.output_min, self.output_max)
 			self.index_in_epoch += 1
+
+			# util.save_image("output/%d_input.png" % i, self.batch_input[i])
+			# util.save_image("output/%d_input_quad.png" % i, self.batch_input_quad[i])
+			# util.save_image("output/%d_true.png" % i, self.batch_true_quad[i])
+
 
 	def build_graph(self, use_dropout=True):
 
@@ -344,10 +345,10 @@ class SuperResolution:
 			total_output_feature_num += output_feature_num[i]
 
 			self.build_conv("conv%d" % i, input_tensor, self.cnn_size,
-			                                     input_feature_num,
-			                                     output_feature_num[i],
-			                                     use_batch_norm=self.batch_norm,
-			                                     use_dropout=use_dropout)
+			                input_feature_num,
+			                output_feature_num[i],
+			                use_batch_norm=self.batch_norm,
+			                use_dropout=use_dropout)
 			input_feature_num = output_feature_num[i]
 			input_tensor = self.H[-1]
 
@@ -357,26 +358,21 @@ class SuperResolution:
 		# building reconstruction layers ---
 
 		self.build_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
-		                                     use_dropout=use_dropout)
-		self.receptive_fields -= (self.cnn_size - 1)
+		                use_dropout=use_dropout)
+		self.receptive_fields -= (self.cnn_size - 1)  # cancel counting receptive field
 
-		self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
-		                                     use_dropout=use_dropout)
+		self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2, use_dropout=use_dropout)
+		self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2, use_dropout=use_dropout)
 
-		self.H_B2 = self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
-		                                     use_dropout=use_dropout)
-
-		#				self.H_concat2 = tf.concat([self.H[0], self.H2[0], self.H2[1]], 3, name="H_concat2")
 		h = tf.concat([self.H[-1], self.H[-3]], 3, name="H_concat2")
-		upsampling_layer_input_channels = self.nin_filters + self.nin_filters2
+		input_channels = self.nin_filters + self.nin_filters2
 
 		# building upsampling layer
-		self.build_transposed_conv("Up", h, self.scale, upsampling_layer_input_channels)
+		self.build_transposed_conv("Up-sample", h, self.scale, input_channels)
 
-		input_channels = upsampling_layer_input_channels
 		for i in range(self.last_layers):
 			self.build_conv("L%d" % (i + 1), self.H[-1], self.last_cnn_size, input_channels, self.last_filters,
-			                             use_dropout=use_dropout)
+			                use_dropout=use_dropout)
 			input_channels = self.last_filters
 
 		self.build_conv("F", self.H[-1], self.last_cnn_size, input_channels, self.output_channels)
@@ -387,83 +383,29 @@ class SuperResolution:
 		logging.info("Feature:%s Complexity:%s Receptive Fields:%d" % (
 			self.features, "{:,}".format(self.complexity), self.receptive_fields))
 
-	def build_graph_bn(self):
-
-		# building feature extraction layers
-		self.Weights = []
-		self.Biases = []
-		self.H = []
-		self.features = ""
-
-		input_feature_num = self.channels
-		if self.dropout == 1.0:
-			use_dropout = False
-		else:
-			use_dropout = True
-
-		self.x = tf.placeholder(tf.float32, shape=[None, None, None, input_feature_num], name="x")
-		self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="y")
-		self.dropout_input = tf.placeholder(tf.float32, shape=[], name="dropout_keep_rate")
-		self.is_training = tf.placeholder(tf.bool, name="training_phase")
-
-		i = 0
-		self.build_conv("conv%d" % i, self.x, self.cnn_size, self.channels, self.filters, use_batch_norm=self.batch_norm,
-		                activator=self.activator, use_dropout=use_dropout, use_bias=True)
-
-		for i in range(1, self.layers, 2):
-			self.build_conv("conv%d" % i, self.H[-1], self.cnn_size, self.filters, self.filters,
-			                use_batch_norm=self.batch_norm, activator=self.activator, use_dropout=use_dropout,
-			                use_bias=False)
-
-			self.build_conv("conv%d" % (i + 1), self.H[-1], self.cnn_size, self.filters, self.filters,
-			                use_batch_norm=self.batch_norm, use_dropout=use_dropout, use_bias=False)
-			self.H[-1] = self.H[-1] * 0.1
-
-			self.H[-1] = self.H[-1] + self.H[-1 - 2]
-
-		# build final - residual block layer
-		self.build_conv("conv%d" % (self.layers - 1 + 1), self.H[-1], self.cnn_size, self.filters, self.filters,
-		                use_batch_norm=False, use_dropout=False, use_bias=False)
-
-		self.H[-1] = self.H[-1] + self.x
-
-		# building upsampling layer
-		self.build_upsampling_layer(self.H[-1])
-
-		# final convolutional layer
-		self.build_conv("conv%d" % (len(self.Weights)), self.H[-1], 9,
-		                self.filters, 1, use_batch_norm=False, use_dropout=False, use_bias=True)
-
-		self.y_ = self.H[-1]
-
-		logging.info("Feature:%s Complexity:%s Receptive Fields:%d" % (
-			self.features, "{:,}".format(self.complexity), self.receptive_fields))
-
+	#Todo not used
 	def build_upsampling_layer(self, h):
 
 		if self.scale == 2 or self.scale == 4:
 			self.build_conv("up_conv_1", h, self.cnn_size, self.filters, 2 * 2 * self.filters,
 			                use_batch_norm=False, use_dropout=False, use_bias=True)
-
 			self.H.append(tf.depth_to_space(self.H[-1], 2))
-
-			self.build_activator(self.H[-1], self.filters, self.activator, "prelu_1")
+			self.build_activator(self.H[-1], self.filters, self.activator, name="prelu_up_conv_1")
 
 			if self.scale == 4:
 				self.build_conv("up_conv_2", self.H[-1], self.cnn_size, self.filters, 2 * 2 * self.filters,
 				                use_batch_norm=False, use_dropout=False, use_bias=True)
-
 				self.H.append(tf.depth_to_space(self.H[-1], 2))
+				self.build_activator(self.H[-1], self.filters, self.activator(), name="prelu_up_conv_2")
 
-				self.build_activator(self.H[-1], self.filters, self.activator(), "prelu_2")
-
-		if self.scale == 3:
+		elif self.scale == 3:
 			self.build_conv("up_conv_1", self.H[-1], self.cnn_size, self.filters, 3 * 3 * self.filters,
 			                use_batch_norm=False, use_dropout=False, use_bias=True)
-
 			self.H.append(tf.depth_to_space(self.H[-1], 3))
-
-			self.build_activator(self.H[-1], self.filters, self.activator, "prelu_1")
+			self.build_activator(self.H[-1], self.filters, self.activator, name="prelu_up_conv_1")
+		else:
+			logging.error("Error, scale:%d is not supported!" % self.scale)
+			return None
 
 	def build_activator(self, hidden, features, activator=None, leaky_relu_alpha=0.1, name=""):
 		if activator == "relu":
@@ -738,11 +680,6 @@ class SuperResolution:
 				self.lr *= self.lr_decay
 				lr_updated = True
 
-		psnr = util.get_psnr(mse, max_value=self.output_max - self.output_min)
-		self.csv_epochs.append(self.epochs_completed)
-		self.csv_psnr.append(psnr)
-		self.csv_training_psnr.append(self.training_psnr_sum / self.training_step)
-
 		return lr_updated
 
 	def print_status(self, mse, log=False):
@@ -773,26 +710,6 @@ class SuperResolution:
 		for weight in self.Weights:
 			util.print_filter_weights(weight)
 
-	def save_graphs(self, checkpoint_dir, trial):
-
-		psnr_graph = np.column_stack((self.csv_epochs, self.csv_psnr, self.csv_training_psnr))
-		filename = checkpoint_dir + "/" + self.name + ("_%d.csv" % trial)
-		np.savetxt(filename, psnr_graph, delimiter=",")
-
-		filename2 = checkpoint_dir + "/" + self.name + ("_%d.png" % trial)
-		plt.plot(self.csv_epochs, self.csv_training_psnr, "b", label='Training PSNR')
-		plt.plot(self.csv_epochs, self.csv_psnr, "r", label='Test PSNR')
-		plt.vlines(self.csv_epochs[-1], 0, self.csv_psnr[-1], color='0.75')
-		plt.hlines(self.csv_psnr[-1], 0, self.csv_epochs[-1], color='0.75')
-		plt.ylim(ymin=30)
-
-		if trial == 0:
-			plt.legend(loc='lower right')
-		plt.savefig(filename2)
-		plt.savefig("PSNR.png")
-
-		print("Graph saved [%s / %s]." % (filename, filename2))
-
 	def do(self, input_image):
 
 		h, w = input_image.shape[:2]
@@ -808,14 +725,17 @@ class SuperResolution:
 				quad_image = util.resize_image_by_pil(image, self.scale)
 				new_h, new_w = image.shape[:2]
 				y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, new_h, new_w, channel),
-				                                      self.x2: quad_image.reshape(1, self.scale * new_h, self.scale * new_w, channel),
+				                                      self.x2: quad_image.reshape(1, self.scale * new_h, self.scale * new_w,
+				                                                                  channel),
 				                                      self.dropout_input: 1.0, self.is_training: False})
 				restored = util.flip(y[0], i, invert=True)
 				output += restored
 
 			output /= self.self_ensemble
 		else:
+			quad_image = util.resize_image_by_pil(input_image, self.scale)
 			y = self.sess.run(self.y_, feed_dict={self.x: input_image.reshape(1, h, w, channel),
+			                                      self.x2: quad_image.reshape(1, self.scale * h, self.scale * w, channel),
 			                                      self.dropout_input: 1.0, self.is_training: False})
 			output = y[0]
 
@@ -902,9 +822,6 @@ class SuperResolution:
 
 	def init_train_step(self):
 		self.lr = self.initial_lr
-		self.csv_epochs = []
-		self.csv_psnr = []
-		self.csv_training_psnr = []
 		self.epochs_completed = 0
 		self.min_validation_mse = -1
 		self.min_validation_epoch = -1
