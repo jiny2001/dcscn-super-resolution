@@ -21,7 +21,7 @@ DEFAULT_METHOD_STRING = "nearest"
 
 
 class SuperResolution:
-	def __init__(self, flags, model_name="", use_upsampling_model = False):
+	def __init__(self, flags, model_name=""):
 
 		# Model Parameters
 		self.filters = flags.filters
@@ -63,8 +63,6 @@ class SuperResolution:
 			self.stride_size = flags.stride_size
 		self.clipping_norm = flags.clipping_norm
 
-		self.upsampling_model = None
-
 		# Learning Rate Control for Training
 		self.initial_lr = flags.initial_lr
 		self.lr_decay = flags.lr_decay
@@ -96,10 +94,7 @@ class SuperResolution:
 		self.log_weight_image_num = 32
 
 		# initialize variables
-		if use_upsampling_model:
-			self.name = self.get_model_name(model_name, name_postfix="M2")
-		else:
-			self.name = self.get_model_name(model_name)
+		self.name = self.get_model_name(model_name)
 		self.receptive_fields = 0
 		self.complexity = 0
 		self.pix_per_input = 1
@@ -194,14 +189,11 @@ class SuperResolution:
 			stride_size = batch_image_size // 2
 
 		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value, resampling_method=self.resampling_method,
-		                           upsampling_model=self.upsampling_model)
+		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
+		                           resampling_method=self.resampling_method)
 
 		if not datasets.is_batch_exist(batch_dir):
 			datasets.build_batch(data_dir, batch_dir)
-		else:
-			if self.upsampling_model is not None:
-				datasets.build_interpolated2_batch(data_dir, batch_dir)
 
 		if target == "training":
 			datasets.load_batch_image_count(batch_dir)
@@ -220,7 +212,8 @@ class SuperResolution:
 			stride_size = batch_image_size // 2
 
 		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value, resampling_method=self.resampling_method)
+		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
+		                           resampling_method=self.resampling_method)
 
 		if not datasets.is_batch_exist(batch_dir):
 			datasets.build_batch(data_dir, batch_dir, self)
@@ -261,31 +254,31 @@ class SuperResolution:
 
 	def build_upsampling_layer(self, h):
 
-		#todo refine
+		# todo refine
 		if self.scale == 2 or self.scale == 4:
 			self.build_conv("up_conv_1", h, self.cnn_size, self.filters, 2 * 2 * self.filters,
-			                use_batch_norm=False, use_dropout=False, use_bias=True)
+			                use_batch_norm=False, use_bias=True)
 			self.H.append(tf.depth_to_space(self.H[-1], 2))
 			self.build_activator(self.H[-1], self.filters, self.activator, base_name="up_conv_1")
 
 			if self.scale == 4:
 				self.build_conv("up_conv_2", self.H[-1], self.cnn_size, self.filters, 2 * 2 * self.filters,
-				                use_batch_norm=False, use_dropout=False, use_bias=True)
+				                use_batch_norm=False, use_bias=True)
 				self.H.append(tf.depth_to_space(self.H[-1], 2))
 				self.build_activator(self.H[-1], self.filters, self.activator(), base_name="up_conv_2")
 
 		elif self.scale == 3:
 			self.build_conv("up_conv_1", self.H[-1], self.cnn_size, self.filters, 3 * 3 * self.filters,
-			                use_batch_norm=False, use_dropout=False, use_bias=True)
+			                use_batch_norm=False, use_bias=True)
 			self.H.append(tf.depth_to_space(self.H[-1], 3))
 			self.build_activator(self.H[-1], self.filters, self.activator, base_name="up_conv_1")
 		else:
 			logging.error("Error, scale:%d is not supported!" % self.scale)
 			return None
 
-	def build_activator(self, input_tensor, features:int, activator="", leaky_relu_alpha=0.1, base_name=""):
+	def build_activator(self, input_tensor, features: int, activator="", leaky_relu_alpha=0.1, base_name=""):
 
-		features=int(features)
+		features = int(features)
 		if activator is None or "":
 			return
 		elif activator == "relu":
@@ -301,61 +294,43 @@ class SuperResolution:
 				alphas = tf.Variable(tf.constant(0.1, shape=[features]), name=base_name + "_prelu")
 				if self.save_weights:
 					util.add_summaries("prelu_alpha", self.name, alphas, save_stddev=False, save_mean=False)
-					hidden = tf.nn.relu(input_tensor) + tf.multiply(alphas, (input_tensor - tf.abs(input_tensor))) * 0.5
+				hidden = tf.nn.relu(input_tensor) + tf.multiply(alphas, (input_tensor - tf.abs(input_tensor))) * 0.5
 		else:
 			raise NameError('Not implemented activator:%s' % activator)
 
 		self.complexity += (self.pix_per_input * features)
-		#self.H.append(hidden)
+
 		return hidden
 
-  # new version
-	# def conv2d(self, x, w, stride, bias=None, batch_norm=False, name=""):
-	#
-	# 	output = tf.nn.conv2d(x, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
-	# 	self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
-	#
-	# 	if bias is not None:
-	# 		output = tf.add(output, bias, name=name + "_add")
-	# 		self.complexity += self.pix_per_input * int(bias.shape[0])
-	#
-	# 	if batch_norm:
-	# 		output = tf.layers.batch_normalization(output, training=self.is_training, name='BN')
-	#
-	# 	return output
+	def conv2d(self, x, w, stride, bias=None, use_batch_norm=False, name=""):
 
-
-	def conv2d(self, x, w, stride, bias=None, activator="", leaky_relu_alpha=0.1, batch_norm=False, name=""):
-
-		conv = tf.nn.conv2d(x, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
+		output = tf.nn.conv2d(x, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
 		self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
 
 		if bias is not None:
-			conv = tf.add(conv, bias, name=name + "_add")
+			output = tf.add(output, bias, name=name + "_add")
 			self.complexity += self.pix_per_input * int(bias.shape[0])
 
-		return conv
+		if use_batch_norm:
+			output = tf.layers.batch_normalization(output, training=self.is_training, name='BN')
 
+		return output
 
-	# new version
 	def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_bias=False,
-	               activator=None, use_batch_norm=False, use_dropout=False):
+	               activator=None, use_batch_norm=False, dropout_rate=1.0):
 
 		with tf.variable_scope(name):
 			w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
 			                stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
 
 			b = util.bias([output_feature_num], name="conv_B") if use_bias else None
-			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, batch_norm=use_batch_norm, name=name)
+			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, use_batch_norm=use_batch_norm, name=name)
 
 			if activator is not None:
 				h = self.build_activator(h, output_feature_num, activator, base_name=name)
-				if use_dropout and self.dropout != 1.0:
-					h = tf.nn.dropout(h, self.dropout_input, name="dropout")
-			else:
-				#todo: refine dropout graph
-				if use_dropout and self.dropout != 1.0:
-					h = tf.nn.dropout(h, self.dropout_input, name="dropout")
+
+			if dropout_rate < 1.0:
+				h = tf.nn.dropout(h, self.dropout_input, name="dropout")
 
 			self.H.append(h)
 
@@ -365,7 +340,7 @@ class SuperResolution:
 				if use_bias:
 					util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
 
-			#todo check
+			# todo check
 			if self.save_images and cnn_size > 1 and input_feature_num == 1:
 				weight_transposed = tf.transpose(w, [3, 0, 1, 2])
 
@@ -383,65 +358,6 @@ class SuperResolution:
 			self.Biases.append(b)
 
 		return h
-
-	def build_conv_and_bias(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_activator=True,
-	                        use_batch_norm=False, use_dropout=True):
-		with tf.variable_scope(name):
-			w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
-			                stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
-			b = util.bias([output_feature_num], name="conv_B")
-			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, batch_norm=use_batch_norm,
-			                activator=self.activator if use_activator else None,
-			                name=name)
-			if use_activator:
-				h = self.build_activator(h, output_feature_num, self.activator, base_name=name)
-
-			if use_dropout and self.dropout != 1.0:
-				h = tf.nn.dropout(h, self.dropout_input, name="dropout")
-
-			if self.save_weights:
-				util.add_summaries("weight", self.name, w, save_stddev=True, save_mean=True)
-				util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
-				util.add_summaries("output", self.name, h, save_stddev=True, save_mean=True)
-
-			if self.save_images and cnn_size > 1 and input_feature_num == 1:
-				weight_transposed = tf.transpose(w, [3, 0, 1, 2])
-				with tf.name_scope("image"):
-					tf.summary.image(self.name, weight_transposed, max_outputs=self.log_weight_image_num)
-
-		if self.receptive_fields == 0:
-			self.receptive_fields = cnn_size
-		else:
-			self.receptive_fields += (cnn_size - 1)
-
-		self.Weights.append(w)
-		self.Biases.append(b)
-		return h
-
-#old ver
-	"""
-	def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num):
-		with tf.variable_scope(name):
-			w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
-			                stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
-			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=None, activator=None, name=name)
-
-			if self.save_weights:
-				util.add_summaries("weight", self.name, w, save_stddev=True, save_mean=True)
-
-			if self.save_images and cnn_size > 1 and input_feature_num == 1:
-				weight_transposed = tf.transpose(w, [3, 0, 1, 2])
-				with tf.name_scope("image"):
-					tf.summary.image(self.name, weight_transposed, max_outputs=self.log_weight_image_num)
-
-		if self.receptive_fields == 0:
-			self.receptive_fields = cnn_size
-		else:
-			self.receptive_fields += (cnn_size - 1)
-
-		self.Weights.append(w)
-		return h
-"""
 
 	def build_transposed_conv(self, name, input_tensor, scale, channels):
 		with tf.variable_scope(name):
@@ -462,7 +378,6 @@ class SuperResolution:
 		self.Weights.append(w)
 		self.H.append(h)
 
-
 	def build_input_batch(self, batch_dir):
 
 		# adjust input batch length
@@ -477,7 +392,7 @@ class SuperResolution:
 		for i in range(length):
 			image_no = self.batch_index[self.index_in_epoch]
 			self.batch_input[i] = loader.load_input_batch_image(batch_dir, image_no)
-			self.batch_input_quad[i] = loader.load_interpolated_batch_image(batch_dir, image_no, self.upsampling_model)
+			self.batch_input_quad[i] = loader.load_interpolated_batch_image(batch_dir, image_no)
 			self.batch_true_quad[i] = loader.load_true_batch_image(batch_dir, image_no)
 			self.index_in_epoch += 1
 
@@ -587,10 +502,10 @@ class SuperResolution:
 			features += "%d " % output_feature_num[i]
 
 			self.build_conv("conv%d" % i, input_tensor, self.cnn_size,
-			                                     input_feature_num,
-			                                     output_feature_num[i],use_bias=True,activator=self.activator,
-			                                     use_batch_norm=self.batch_norm,
-			                                     use_dropout=use_dropout)
+			                input_feature_num,
+			                output_feature_num[i], use_bias=True, activator=self.activator,
+			                use_batch_norm=self.batch_norm,
+			                dropout_rate=self.dropout)
 			input_feature_num = output_feature_num[i]
 			input_tensor = self.H[-1]
 
@@ -605,22 +520,22 @@ class SuperResolution:
 		else:
 			if self.nin:
 				self.build_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
-				                                     use_dropout=use_dropout,use_bias=True,activator=self.activator)
+				                dropout_rate=self.dropout, use_bias=True, activator=self.activator)
 				self.receptive_fields -= (self.cnn_size - 1)
 
 				self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
-				                                     use_dropout=use_dropout,use_bias=True,activator=self.activator)
+				                dropout_rate=self.dropout, use_bias=True, activator=self.activator)
 
 				self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
-				                                     use_dropout=use_dropout,use_bias=True,activator=self.activator)
+				                dropout_rate=self.dropout, use_bias=True, activator=self.activator)
 
 				#				self.H_concat2 = tf.concat([self.H[0], self.H2[0], self.H2[1]], 3, name="H_concat2")
-				self.H.append( tf.concat([self.H[-1], self.H[-3]], 3, name="H_concat2"))
+				self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="H_concat2"))
 				upsampling_layer_input_channels = self.nin_filters + self.nin_filters2
 			else:
 				self.build_conv("A1", self.H_concat, 1, total_output_feature_num,
-				                                                  self.nin_filters,
-				                                                  use_dropout=use_dropout,use_bias=True,activator=self.activator)
+				                self.nin_filters,
+				                dropout_rate=self.dropout, use_bias=True, activator=self.activator)
 				upsampling_layer_input_channels = self.nin_filters
 
 		# building upsampling layer
@@ -629,7 +544,7 @@ class SuperResolution:
 		input_channels = upsampling_layer_input_channels
 		for i in range(self.last_layers):
 			h = self.build_conv("L%d" % (i + 1), self.H[-1], self.last_cnn_size, input_channels, self.last_filters,
-			                             use_dropout=use_dropout,use_bias=True,activator=self.activator)
+			                    dropout_rate=self.dropout, use_bias=True, activator=self.activator)
 			input_channels = self.last_filters
 
 		self.build_conv("F", self.H[-1], self.last_cnn_size, input_channels, self.output_channels)
@@ -639,7 +554,6 @@ class SuperResolution:
 
 		logging.info("Feature:%s Complexity:%s Receptive Fields:%d" % (
 			features, "{:,}".format(self.complexity), self.receptive_fields))
-
 
 	def build_optimizer(self):
 
@@ -810,7 +724,8 @@ class SuperResolution:
 				summary_str, mse = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict)
 
 			self.train_writer.add_summary(summary_str, self.epochs_completed)
-			util.log_scalar_value(self.train_writer, 'training_PSNR', self.training_psnr_sum / self.training_step, self.epochs_completed)
+			util.log_scalar_value(self.train_writer, 'training_PSNR', self.training_psnr_sum / self.training_step,
+			                      self.epochs_completed)
 			util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
 			self.train_writer.flush()
 
@@ -946,10 +861,8 @@ class SuperResolution:
 			input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
 
 		if bicubic_input_image is None:
-			if self.upsampling_model is not None:
-				bicubic_input_image = self.upsampling_model.do(input_image)
-			else:
-				bicubic_input_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
+			bicubic_input_image = util.resize_image_by_pil(input_image, self.scale,
+				                                               resampling_method=self.resampling_method)
 
 		if self.self_ensemble > 1:
 			output = np.zeros([self.scale * h, self.scale * w, 1])
@@ -960,7 +873,7 @@ class SuperResolution:
 				y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
 				                                      self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
 				                                                                     self.scale * image.shape[1],
-				                                                                           ch),
+				                                                                     ch),
 				                                      self.dropout_input: 1.0, self.is_training: 0})
 				restored = util.flip(y[0], i, invert=True)
 				output += restored
@@ -968,8 +881,8 @@ class SuperResolution:
 			output /= self.self_ensemble
 		else:
 			y = self.sess.run(self.y_, feed_dict={self.x: input_image.reshape(1, h, w, ch),
-		                                      self.x2: bicubic_input_image.reshape(1, self.scale * h, self.scale * w, ch),
-		                                      self.dropout_input: 1.0, self.is_training: 0})
+			                                      self.x2: bicubic_input_image.reshape(1, self.scale * h, self.scale * w, ch),
+			                                      self.dropout_input: 1.0, self.is_training: 0})
 			output = y[0]
 
 		if self.max_value != 255.0:
@@ -988,22 +901,17 @@ class SuperResolution:
 
 		if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
 			input_y_image = util.convert_rgb_to_y(org_image, jpeg_mode=self.jpeg_mode)
-			if self.upsampling_model is not None:
-				scaled_image = self.upsampling_model.do(input_y_image)
-			else:
-				scaled_image = util.resize_image_by_pil(input_y_image, self.scale, resampling_method=self.resampling_method)
+			scaled_image = util.resize_image_by_pil(input_y_image, self.scale, resampling_method=self.resampling_method)
 			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
 			output_y_image = self.do(input_y_image)
 			util.save_image(output_folder + filename + "_result_y" + extension, output_y_image)
 
-			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(util.resize_image_by_pil(org_image, self.scale,self.resampling_method),
-			                                               jpeg_mode=self.jpeg_mode)
+			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(
+				util.resize_image_by_pil(org_image, self.scale, self.resampling_method),
+				jpeg_mode=self.jpeg_mode)
 			image = util.convert_y_and_cbcr_to_rgb(output_y_image, scaled_ycbcr_image[:, :, 1:3], jpeg_mode=self.jpeg_mode)
 		else:
-			if self.upsampling_model is not None:
-				scaled_image = self.upsampling_model.do(org_image)
-			else:
-				scaled_image = util.resize_image_by_pil(org_image, self.scale, resampling_method=self.resampling_method)
+			scaled_image = util.resize_image_by_pil(org_image, self.scale, resampling_method=self.resampling_method)
 			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
 			image = self.do(org_image)
 
@@ -1013,7 +921,7 @@ class SuperResolution:
 	def do_for_evaluate(self, file_path, output_directory="output", output=True, print_console=False):
 
 		filename, extension = os.path.splitext(file_path)
-		output_directory += "/" + self.name +"/"
+		output_directory += "/" + self.name + "/"
 		util.make_dir(output_directory)
 		true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
 
@@ -1022,10 +930,8 @@ class SuperResolution:
 			                                         alignment=self.scale, convert_ycbcr=True, jpeg_mode=self.jpeg_mode)
 			# for color images
 			if output:
-				if self.upsampling_model is not None:
-					input_bicubic_y_image = self.upsampling_model.do(input_y_image)
-				else:
-					input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale, resampling_method=self.resampling_method)
+				input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
+					                                                 resampling_method=self.resampling_method)
 
 				true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image, jpeg_mode=self.jpeg_mode)
 
@@ -1045,10 +951,8 @@ class SuperResolution:
 				util.save_image(output_directory + filename + "_loss" + extension, loss_image)
 			else:
 				true_y_image = util.convert_rgb_to_y(true_image, jpeg_mode=self.jpeg_mode)
-				if self.upsampling_model is not None:
-					input_bicubic_y_image = self.upsampling_model.do(input_y_image)
-				else:
-					input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale, resampling_method=self.resampling_method)
+				input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
+					                                                 resampling_method=self.resampling_method)
 				output_y_image = self.do(input_y_image, input_bicubic_y_image)
 				mse = util.compute_mse(true_y_image, output_y_image, border_size=self.scale)
 
@@ -1056,10 +960,8 @@ class SuperResolution:
 
 			# for monochrome images
 			input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale, alignment=self.scale)
-			if self.upsampling_model is not None:
-				input_bicubic_y_image = self.upsampling_model.do(input_image)
-			else:
-				input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
+			input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
+				                                                 resampling_method=self.resampling_method)
 			output_image = self.do(input_image, input_bicubic_y_image)
 			mse = util.compute_mse(true_image, output_image, border_size=self.scale)
 			if output:

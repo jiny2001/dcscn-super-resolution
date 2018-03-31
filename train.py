@@ -21,7 +21,7 @@ def main(not_parsed_args):
 		print("Unknown args:%s" % not_parsed_args)
 		exit()
 
-	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name, use_upsampling_model=FLAGS.upsampling_mode)
+	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 
 	model.load_datasets("training", FLAGS.data_dir + "/" + FLAGS.dataset, FLAGS.batch_dir + "/" + FLAGS.dataset,
 	                    FLAGS.batch_image_size, FLAGS.stride_size)
@@ -39,10 +39,7 @@ def main(not_parsed_args):
 
 	for i in range(FLAGS.tests):
 
-		if FLAGS.upsampling_mode:
-			train(model, FLAGS, i, model.upsampling_model.name+"_0")
-		else:
-			train(model, FLAGS, i)
+		train(model, FLAGS, i)
 
 		total_psnr = total_mse = 0
 		for filename in test_filenames:

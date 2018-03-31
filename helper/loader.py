@@ -13,37 +13,14 @@ from helper import utilty as util
 
 INPUT_IMAGE_DIR = "input"
 INTERPOLATED_IMAGE_DIR = "interpolated"
-INTERPOLATED2_IMAGE_DIR = "interpolated2"
 TRUE_IMAGE_DIR = "true"
 
 
 def convert_to_multi_channel_image(multi_channel_image, image, scale):
 	multi_channel_image = image
 
-
-# height = multi_channel_image.shape[0]
-# width = multi_channel_image.shape[1]
-#
-# for y in range(height):
-# 	for x in range(width):
-# 		for y2 in range(scale):
-# 			for x2 in range(scale):
-# 				multi_channel_image[y, x, y2 * scale + x2] = image[y * scale + y2, x * scale + x2, 0]
-
-
 def convert_from_multi_channel_image(image, multi_channel_image, scale):
 	image = multi_channel_image
-
-
-# height = multi_channel_image.shape[0]
-# width = multi_channel_image.shape[1]
-#
-# for y in range(height):
-# 	for x in range(width):
-# 		for y2 in range(scale):
-# 			for x2 in range(scale):
-# 				image[y * scale + y2, x * scale + x2, 0] = multi_channel_image[y, x, y2 * scale + x2]
-
 
 def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True,
                      jpeg_mode=False, print_console=True):
@@ -224,7 +201,7 @@ class DataSet:
 
 class DataSets:
 	def __init__(self, scale, batch_image_size, stride_size, channels=1,
-	             jpeg_mode=False, max_value=255.0, resampling_method="nearest", upsampling_model=None):
+	             jpeg_mode=False, max_value=255.0, resampling_method="bicubic"):
 
 		self.scale = scale
 		self.batch_image_size = batch_image_size
@@ -233,7 +210,6 @@ class DataSets:
 		self.jpeg_mode = jpeg_mode
 		self.max_value = max_value
 		self.resampling_method = resampling_method
-		self.upsampling_model = upsampling_model
 
 		self.input = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, jpeg_mode=jpeg_mode,
 		                     max_value=max_value)
@@ -276,7 +252,6 @@ class DataSets:
 			output_window_stride = self.stride * self.scale
 
 			input_image, input_interpolated_image = self.input.load_input_image(filename, rescale=True,
-			                                                                    model=self.upsampling_model,
 			                                                                    resampling_method=self.resampling_method)
 			test_image = self.true.load_test_image(filename)
 
@@ -292,7 +267,7 @@ class DataSets:
 
 			for i in range(input_count):
 				save_input_batch_image(batch_dir, images_count, input_batch_images[i])
-				save_interpolated_batch_image(batch_dir, images_count, input_interpolated_batch_images[i], self.upsampling_model)
+				save_interpolated_batch_image(batch_dir, images_count, input_interpolated_batch_images[i])
 				save_true_batch_image(batch_dir, images_count, test_batch_images[i])
 				images_count += 1
 
@@ -311,37 +286,6 @@ class DataSets:
 		with open(batch_dir + "/batch_images.ini", "w") as configfile:
 			config.write(configfile)
 
-	def build_interpolated2_batch(self, data_dir, batch_dir):
-		""" load from input files. Then save batch images on file to reduce memory consumption. """
-
-		print("Building interpolated2 batch images for %s..." % batch_dir)
-		filenames = util.get_files_in_directory(data_dir)
-		images_count = 0
-
-		util.make_dir(batch_dir + "/" + INTERPOLATED2_IMAGE_DIR)
-
-		for filename in filenames:
-			output_window_size = self.batch_image_size * self.scale
-			output_window_stride = self.stride * self.scale
-
-			input_image, input_interpolated2_image = self.input.load_input_image(filename, rescale=True,
-			                                                                     model=self.upsampling_model,
-			                                                                     resampling_method=self.resampling_method)
-
-			# split into batch images
-			input_interpolated2_batch_images = util.get_split_images(input_interpolated2_image, output_window_size,
-			                                                         stride=output_window_stride)
-			if input_interpolated2_batch_images is None:
-				continue
-			input_count = input_interpolated2_batch_images.shape[0]
-
-			for i in range(input_count):
-				save_interpolated_batch_image(batch_dir, images_count, input_interpolated2_batch_images[i],
-				                              self.upsampling_model)
-				images_count += 1
-
-		print("%d interpolated2 images are built(saved)." % images_count)
-
 	def load_batch(self, batch_dir):
 		""" load already built batch images. """
 
@@ -349,7 +293,7 @@ class DataSets:
 		config.read(batch_dir + "/batch_images.ini")
 		count = config.getint("batch", "count")
 
-		self.input.load_batch_images(batch_dir, True, count, self.upsampling_model)
+		self.input.load_batch_images(batch_dir, True, count)
 		self.true.load_batch_images(batch_dir, False, count)
 
 	def load_batch_image_count(self, batch_dir):
@@ -400,11 +344,3 @@ class DataSets:
 		except IOError:
 			return False
 
-	def is_interpolated2_exist(self, batch_dir):
-		if not is_interpolated2_batch_dir_exist(batch_dir):
-			return False
-
-		if not is_interpolated2_batch_image_exist(batch_dir, 0):
-			return False
-
-		return True

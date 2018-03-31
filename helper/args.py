@@ -27,7 +27,6 @@ flags.DEFINE_float("dropout", 0.8, "For dropout value for  value. Don't use if i
 flags.DEFINE_string("activator", "prelu", "Activator. can be [relu, leaky_relu, prelu, sigmoid, tanh]")
 flags.DEFINE_float("filters_decay_gamma", 1.5, "Gamma")
 flags.DEFINE_boolean("batch_norm", False, "batch normalization")
-flags.DEFINE_boolean("upsampling_mode", False, "Use 2-step SR Model")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
 
 
