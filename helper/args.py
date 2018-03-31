@@ -5,7 +5,7 @@ functions for sharing arguments and their default values
 """
 
 import sys
-
+import numpy as np
 import tensorflow as tf
 
 flags = tf.app.flags
@@ -86,4 +86,8 @@ flags.DEFINE_boolean("save_meta_data", False, "")
 def get():
 	print("Python Interpreter version:%s" % sys.version[:3])
 	print("tensorflow version:%s" % tf.__version__)
+	print("numpy version:%s" % np.__version__)
+
+	# check which library you are using
+	# np.show_config()
 	return FLAGS

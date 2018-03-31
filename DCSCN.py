@@ -63,16 +63,7 @@ class SuperResolution:
 			self.stride_size = flags.stride_size
 		self.clipping_norm = flags.clipping_norm
 
-		if use_upsampling_model:
-			# building model1
-			model1 = SuperResolution3(flags)
-			model1.build_graph()
-			model1.build_summary_saver()
-			model1.init_all_variables()
-			model1.load_model(output_log=True)
-			self.upsampling_model = model1
-		else:
-			self.upsampling_model = None
+		self.upsampling_model = None
 
 		# Learning Rate Control for Training
 		self.initial_lr = flags.initial_lr
