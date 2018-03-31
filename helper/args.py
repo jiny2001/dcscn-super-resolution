@@ -1,5 +1,6 @@
 """
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
+Ver: 2
 
 functions for sharing arguments and their default values
 """

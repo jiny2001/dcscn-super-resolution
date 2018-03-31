@@ -1,25 +1,26 @@
 """
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
+Ver: 2.0
 
-DCSCN model implementation (Transposed-CNN Super Resolution ver)
+DCSCN model implementation (Transposed-CNN version)
 """
 
 import logging
 import os
 import random
-import shutil
 import time
-
 import numpy as np
 import tensorflow as tf
 
-from helper import loader, utilty as util
+from helper import loader, tf_graph, utilty as util
 
 BICUBIC_METHOD_STRING = "bicubic"
 
 
-class SuperResolution:
+class SuperResolution(tf_graph.TensorflowGraph):
 	def __init__(self, flags, model_name=""):
+
+		super().__init__(flags)
 
 		# Model Parameters
 		self.filters = flags.filters
@@ -27,23 +28,16 @@ class SuperResolution:
 		self.use_nin = flags.use_nin
 		self.nin_filters = flags.nin_filters
 		self.nin_filters2 = flags.nin_filters2
-		self.cnn_size = flags.cnn_size
 		self.last_cnn_size = flags.last_cnn_size
 		self.last_layers = flags.last_layers
 		self.last_filters = flags.last_filters
-		self.cnn_stride = 1
 		self.layers = flags.layers
 		self.resampling_method = BICUBIC_METHOD_STRING
 		self.self_ensemble = flags.self_ensemble
 
-		self.dropout_rate = flags.dropout_rate
-		self.activator = flags.activator
 		self.filters_decay_gamma = flags.filters_decay_gamma
-		self.batch_norm = flags.batch_norm
 
 		# Training Parameters
-		self.initializer = flags.initializer
-		self.weight_dev = flags.weight_dev
 		self.l2_decay = flags.l2_decay
 		self.optimizer = flags.optimizer
 		self.beta1 = flags.beta1
@@ -71,27 +65,13 @@ class SuperResolution:
 		self.max_value = flags.max_value
 		self.channels = flags.channels
 		self.jpeg_mode = flags.jpeg_mode
-		self.output_channels = 1  # self.scale * self.scale
+		self.output_channels = 1
 
 		# Environment (all directory name should not contain '/' after )
-		self.checkpoint_dir = flags.checkpoint_dir
-		self.tf_log_dir = flags.tf_log_dir
 		self.batch_dir = flags.batch_dir
-
-		# Debugging or Logging
-		self.debug = flags.debug
-		self.save_loss = flags.save_loss
-		self.save_weights = flags.save_weights
-		self.save_images = flags.save_images
-		self.save_images_num = flags.save_images_num
-		self.save_meta_data = flags.save_meta_data
-		self.log_weight_image_num = 32
 
 		# initialize variables
 		self.name = self.get_model_name(model_name)
-		self.receptive_fields = 0
-		self.complexity = 0
-		self.pix_per_input = 1
 
 		# initialize environment
 		util.make_dir(self.checkpoint_dir)
@@ -101,18 +81,11 @@ class SuperResolution:
 			util.clean_dir(self.tf_log_dir)
 		util.set_logging(flags.log_filename, stream_log_level=logging.INFO, file_log_level=logging.INFO,
 		                 tf_log_level=tf.logging.WARN)
-		self.init_session()
+
 		self.init_train_step()
 
 		logging.info("\nDCSCN v2-------------------------------------")
 		logging.info("%s [%s]" % (util.get_now_date(), self.name))
-
-	def init_session(self):
-		config = tf.ConfigProto()
-		config.gpu_options.allow_growth = False
-
-		print("Initialised session and graph")
-		self.sess = tf.InteractiveSession(config=config, graph=tf.Graph())
 
 	def get_model_name(self, model_name, name_postfix=""):
 		if model_name is "":
@@ -158,19 +131,6 @@ class SuperResolution:
 
 		return name
 
-	def init_datasets(self, batch_dir, batch_image_size, stride_size=0):
-
-		batch_dir += "/scale%d" % self.scale
-
-		if stride_size == 0:
-			stride_size = batch_image_size // 2
-
-		self.train = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                             jpeg_mode=self.jpeg_mode, max_value=self.max_value,
-		                             resampling_method=self.resampling_method)
-		self.test = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                            jpeg_mode=self.jpeg_mode, max_value=self.max_value, resampling_method=resampling_method)
-
 	def load_datasets(self, target, data_dir, batch_dir, batch_image_size, stride_size=0):
 
 		batch_dir += "/scale%d" % self.scale
@@ -192,27 +152,6 @@ class SuperResolution:
 			self.train = datasets
 		else:
 			datasets.load_batch(batch_dir)
-			self.test = datasets
-
-	def build_ex_datasets(self, target, data_dir, batch_dir, batch_image_size, stride_size=0):
-
-		batch_dir += "/scale%d" % self.scale
-		print("Loading datasets for [%s]..." % target)
-		util.make_dir(batch_dir)
-
-		if stride_size == 0:
-			stride_size = batch_image_size // 2
-
-		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
-		                           resampling_method=self.resampling_method)
-
-		if not datasets.is_batch_exist(batch_dir):
-			datasets.build_batch(data_dir, batch_dir, self)
-
-		if target == "training":
-			self.train = datasets
-		else:
 			self.test = datasets
 
 	def build_training_datasets(self, data_dir, batch_dir, batch_image_size, stride_size=0):
@@ -242,131 +181,6 @@ class SuperResolution:
 		self.training_mse_sum = 0
 		self.training_step = 0
 
-	def build_pixel_shuffler_upsampling_layer(self, h):
-
-		# todo refine
-		if self.scale == 2 or self.scale == 4:
-			self.build_conv("up_conv_1", h, self.cnn_size, self.filters, 2 * 2 * self.filters,
-			                use_batch_norm=False, use_bias=True)
-			self.H.append(tf.depth_to_space(self.H[-1], 2))
-			self.build_activator(self.H[-1], self.filters, self.activator, base_name="up_conv_1")
-
-			if self.scale == 4:
-				self.build_conv("up_conv_2", self.H[-1], self.cnn_size, self.filters, 2 * 2 * self.filters,
-				                use_batch_norm=False, use_bias=True)
-				self.H.append(tf.depth_to_space(self.H[-1], 2))
-				self.build_activator(self.H[-1], self.filters, self.activator(), base_name="up_conv_2")
-
-		elif self.scale == 3:
-			self.build_conv("up_conv_1", self.H[-1], self.cnn_size, self.filters, 3 * 3 * self.filters,
-			                use_batch_norm=False, use_bias=True)
-			self.H.append(tf.depth_to_space(self.H[-1], 3))
-			self.build_activator(self.H[-1], self.filters, self.activator, base_name="up_conv_1")
-		else:
-			logging.error("Error, scale:%d is not supported!" % self.scale)
-			return None
-
-	def build_activator(self, input_tensor, features: int, activator="", leaky_relu_alpha=0.1, base_name=""):
-
-		features = int(features)
-		if activator is None or "":
-			return
-		elif activator == "relu":
-			output = tf.nn.relu(input_tensor, name=base_name + "_relu")
-		elif activator == "sigmoid":
-			output = tf.nn.sigmoid(input_tensor, name=base_name + "_sigmoid")
-		elif activator == "tanh":
-			output = tf.nn.tanh(input_tensor, name=base_name + "_tanh")
-		elif activator == "leaky_relu":
-			output = tf.maximum(input_tensor, leaky_relu_alpha * input_tensor, name=base_name + "_leaky")
-		elif activator == "prelu":
-			with tf.variable_scope("prelu"):
-				alphas = tf.Variable(tf.constant(0.1, shape=[features]), name=base_name + "_prelu")
-				if self.save_weights:
-					util.add_summaries("prelu_alpha", self.name, alphas, save_stddev=False, save_mean=False)
-				output = tf.nn.relu(input_tensor) + tf.multiply(alphas, (input_tensor - tf.abs(input_tensor))) * 0.5
-		else:
-			raise NameError('Not implemented activator:%s' % activator)
-
-		self.complexity += (self.pix_per_input * features)
-
-		return output
-
-	def conv2d(self, input_tensor, w, stride, bias=None, use_batch_norm=False, name=""):
-
-		output = tf.nn.conv2d(input_tensor, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
-		self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
-
-		if bias is not None:
-			output = tf.add(output, bias, name=name + "_add")
-			self.complexity += self.pix_per_input * int(bias.shape[0])
-
-		if use_batch_norm:
-			output = tf.layers.batch_normalization(output, training=self.is_training, name='BN')
-
-		return output
-
-	def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_bias=False,
-	               activator=None, use_batch_norm=False, dropout_rate=1.0):
-
-		with tf.variable_scope(name):
-			w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
-			                stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
-
-			b = util.bias([output_feature_num], name="conv_B") if use_bias else None
-			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, use_batch_norm=use_batch_norm, name=name)
-
-			if activator is not None:
-				h = self.build_activator(h, output_feature_num, activator, base_name=name)
-
-			if dropout_rate < 1.0:
-				h = tf.nn.dropout(h, self.dropout, name="dropout")
-
-			self.H.append(h)
-
-			if self.save_weights:
-				util.add_summaries("weight", self.name, w, save_stddev=True, save_mean=True)
-				util.add_summaries("output", self.name, h, save_stddev=True, save_mean=True)
-				if use_bias:
-					util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
-
-			# todo check
-			if self.save_images and cnn_size > 1 and input_feature_num == 1:
-				weight_transposed = tf.transpose(w, [3, 0, 1, 2])
-
-				with tf.name_scope("image"):
-					tf.summary.image(self.name, weight_transposed, max_outputs=self.log_weight_image_num)
-
-		if self.receptive_fields == 0:
-			self.receptive_fields = cnn_size
-		else:
-			self.receptive_fields += (cnn_size - 1)
-		self.features += "%d " % output_feature_num
-
-		self.Weights.append(w)
-		if use_bias:
-			self.Biases.append(b)
-
-		return h
-
-	def build_transposed_conv(self, name, input_tensor, scale, channels):
-		with tf.variable_scope(name):
-			w = util.upscale_weight(scale=scale, channels=channels, name="Tconv_W")
-
-			batch_size = tf.shape(input_tensor)[0]
-			height = tf.shape(input_tensor)[1] * scale
-			width = tf.shape(input_tensor)[2] * scale
-
-			h = tf.nn.conv2d_transpose(input_tensor, w, output_shape=[batch_size, height, width, channels],
-			                           strides=[1, scale, scale, 1], name=name)
-
-		self.pix_per_input *= scale * scale
-		self.complexity += self.pix_per_input * util.get_upscale_filter_size(scale) * util.get_upscale_filter_size(
-			scale) * channels * channels
-		self.receptive_fields += 1
-
-		self.Weights.append(w)
-		self.H.append(h)
 
 	def build_input_batch(self, batch_dir):
 
@@ -386,60 +200,8 @@ class SuperResolution:
 			self.batch_true_quad[i] = loader.load_true_batch_image(batch_dir, image_no)
 			self.index_in_epoch += 1
 
-	# new version
-	# def build_graph(self, use_dropout=True):
-	#
-	# 	for i in range(self.layers):
-	# 		if self.min_filters != 0:
-	# 			if i == 0:
-	# 				output_feature_num[i] = self.filters
-	# 			else:
-	# 				x1 = i / float(self.layers - 1)
-	# 				y1 = pow(x1, 1.0 / self.filters_decay_gamma)
-	# 				output_feature_num[i] = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
-	# 		else:
-	# 			output_feature_num[i] = self.filters
-	# 		total_output_feature_num += output_feature_num[i]
-	#
-	# 		self.build_conv("conv%d" % i, input_tensor, self.cnn_size,
-	# 		                input_feature_num,
-	# 		                output_feature_num[i],
-	# 		                use_batch_norm=self.batch_norm,
-	# 		                use_dropout=use_dropout)
-	#
-	# 		input_feature_num = output_feature_num[i]
-	# 		input_tensor = self.H[-1]
-	#
-	# 	with tf.variable_scope("concat"):
-	# 		self.H_concat = tf.concat(self.H, 3, name="H_concat")
-	#
-	# 	# building reconstruction layers ---
-	# 	self.build_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
-	# 	                use_dropout=use_dropout)
-	# 	self.receptive_fields -= (self.cnn_size - 1)  # cancel counting receptive field
-	#
-	# 	self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2, use_dropout=use_dropout)
-	# 	self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2, use_dropout=use_dropout)
-	#
-	# 	h = tf.concat([self.H[-1], self.H[-3]], 3, name="H_concat2")
-	#
-	# 	# building upsampling layer
-	# 	input_channels = self.nin_filters + self.nin_filters2
-	# 	self.build_transposed_conv("Up-sample", h, self.scale, input_channels)
-	#
-	# 	for i in range(self.last_layers):
-	# 		self.build_conv("L%d" % (i + 1), self.H[-1], self.last_cnn_size, input_channels, self.last_filters,
-	# 		                use_dropout=use_dropout)
-	# 		input_channels = self.last_filters
-	#
-	# 	self.build_conv("F", self.H[-1], self.last_cnn_size, input_channels, self.output_channels)
-	# 	self.y_ = self.H[-1] + self.x2
-	# 	self.weights = self.Weights
-	#
-	# 	logging.info("Feature:%s Complexity:%s Receptive Fields:%d" % (
-	# 		self.features, "{:,}".format(self.complexity), self.receptive_fields))
 
-	def build_graph(self, use_dropout=True):
+	def build_graph(self):
 
 		self.x = tf.placeholder(tf.float32, shape=[None, None, None, self.channels], name="x")
 		self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="y")
@@ -448,12 +210,8 @@ class SuperResolution:
 		self.is_training = tf.placeholder(tf.bool, name="is_training")
 
 		# building feature extraction layers
-		self.Weights = []
-		self.Biases = []
-		self.features = ""
-		self.H = []
 
-		output_feature_num = self.layers * [0]
+		output_feature_num = self.filters
 		total_output_feature_num = 0
 		input_feature_num = self.channels
 		input_tensor = self.x
@@ -462,17 +220,14 @@ class SuperResolution:
 			if self.min_filters != 0 and i > 0:
 				x1 = i / float(self.layers - 1)
 				y1 = pow(x1, 1.0 / self.filters_decay_gamma)
-				output_feature_num[i] = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
-			else:
-				output_feature_num[i] = self.filters
-			total_output_feature_num += output_feature_num[i]
+				output_feature_num = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
 
-			self.build_conv("conv%d" % i, input_tensor, self.cnn_size,
-			                input_feature_num,
-			                output_feature_num[i], use_bias=True, activator=self.activator,
+			self.build_conv("conv%d" % i, input_tensor, self.cnn_size, input_feature_num,
+			                output_feature_num, use_bias=True, activator=self.activator,
 			                use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
-			input_feature_num = output_feature_num[i]
+			input_feature_num = output_feature_num
 			input_tensor = self.H[-1]
+			total_output_feature_num += output_feature_num
 
 		with tf.variable_scope("concat"):
 			self.H_concat = tf.concat(self.H, 3, name="H_concat")
@@ -519,12 +274,8 @@ class SuperResolution:
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 		diff = self.y_ - self.y
 
-		mse = tf.reduce_mean(tf.square(diff), name="mse")
-
-		if self.debug:
-			mse = tf.Print(mse, [mse], message="MSE: ")
-
-		loss = mse
+		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
+		loss = self.mse
 
 		if self.l2_decay > 0:
 			l2_losses = [tf.nn.l2_loss(w) for w in self.Weights]
@@ -539,7 +290,6 @@ class SuperResolution:
 			tf.summary.scalar("loss/" + self.name, loss)
 
 		self.loss = loss
-		self.mse = mse
 
 		if self.batch_norm:
 			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -588,50 +338,6 @@ class SuperResolution:
 
 		return training_optimizer
 
-	def build_summary_saver(self):
-		if self.save_loss or self.save_weights or self.save_meta_data:
-			self.summary_op = tf.summary.merge_all()
-			self.train_writer = tf.summary.FileWriter(self.tf_log_dir + "/train")
-			self.test_writer = tf.summary.FileWriter(self.tf_log_dir + "/test", graph=self.sess.graph)
-
-		self.saver = tf.train.Saver(max_to_keep=None)
-
-	def init_all_variables(self):
-		self.sess.run(tf.global_variables_initializer())
-		print("Model Initialised.")
-
-	def load_model(self, name="", trial=0, output_log=False):
-
-		if name == "" or name == "default":
-			filename = self.checkpoint_dir + "/" + self.name + "_" + str(trial) + ".ckpt"
-		else:
-			filename = self.checkpoint_dir + "/" + name + ".ckpt"
-
-		if not os.path.isfile(filename + ".index"):
-			print("Error. [%s] is not exist!" % filename)
-			exit(-1)
-
-		print("Model restoring... [ %s ]." % filename)  ##
-
-		self.saver.restore(self.sess, filename)
-		if output_log:
-			logging.info("Model restored [ %s ]." % filename)
-		else:
-			print("Model restored [ %s ]." % filename)
-
-	def save_model(self, name="", trial=0, output_log=False):
-
-		if name == "":
-			filename = self.checkpoint_dir + "/" + self.name + "_" + str(trial) + ".ckpt"
-		else:
-			filename = self.checkpoint_dir + "/" + name + ".ckpt"
-
-		self.saver.save(self.sess, filename)
-		if output_log:
-			logging.info("Model saved [%s]." % filename)
-		else:
-			print("Model saved [%s]." % filename)
-
 	def train_batch(self):
 
 		feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_quad, self.y: self.batch_true_quad,
@@ -644,8 +350,8 @@ class SuperResolution:
 		self.training_step += 1
 		self.step += 1
 
-	#todo check name
-	def evaluate(self, save_meta_data=False, trial=0, logging=True):
+	# todo check profiler op
+	def evaluate_test_batch(self, save_meta_data=False, trial=0, logging=True):
 
 		save_meta_data = save_meta_data and self.save_meta_data and (trial == 0)
 		feed_dict = {self.x: self.test.input.images,
@@ -713,11 +419,6 @@ class SuperResolution:
 				self.min_validation_epoch = self.epochs_completed
 				self.lr *= self.lr_decay
 				lr_updated = True
-
-		psnr = util.get_psnr(mse, max_value=self.max_value)
-		self.csv_epochs.append(self.epochs_completed)
-		self.csv_psnr.append(psnr)
-		self.csv_training_psnr.append(self.training_psnr_sum / self.training_step)
 
 		return lr_updated
 
@@ -813,7 +514,7 @@ class SuperResolution:
 			image = self.do(org_image)
 
 		util.save_image(output_folder + filename + "_result" + extension, image)
-		return 0
+
 
 	def do_for_evaluate(self, file_path, output_directory="output", output=True, print_console=False):
 
@@ -864,16 +565,16 @@ class SuperResolution:
 			if output:
 				util.save_image(output_directory + file_path, true_image)
 				util.save_image(output_directory + filename + "_result" + extension, output_image)
+		else:
+			mse = 0
 
 		if print_console:
 			print("MSE:%f, PSNR:%f" % (mse, util.get_psnr(mse)))
+
 		return mse
 
 	def init_train_step(self):
 		self.lr = self.initial_lr
-		self.csv_epochs = []
-		self.csv_psnr = []
-		self.csv_training_psnr = []
 		self.epochs_completed = 0
 		self.min_validation_mse = -1
 		self.min_validation_epoch = -1
@@ -923,19 +624,6 @@ class SuperResolution:
 		#   run_meta=run_metadata,
 		#   tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
 		self.first_training = False
-
-	def copy_log_to_archive(self, archive_name):
-
-		archive_directory = self.tf_log_dir + '_' + archive_name
-		model_archive_directory = archive_directory + '/' + self.name
-		util.make_dir(archive_directory)
-		util.delete_dir(model_archive_directory)
-		try:
-			shutil.copytree(self.tf_log_dir, model_archive_directory)
-			print("tensorboard log archived to [%s]." % model_archive_directory)
-		except OSError as e:
-			print(e)
-			print("NG: tensorboard log archived to [%s]." % model_archive_directory)
 
 	def report_updated_history(self):
 

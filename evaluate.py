@@ -1,14 +1,13 @@
 """
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
+Ver: 2.0
 
 functions for evaluating results
 """
 
 import logging
-
 import tensorflow as tf
-
-import DCSCN3
+import DCSCN
 from helper import args, utilty as util
 
 args.flags.DEFINE_boolean("save_results", True, "Save result, bicubic and loss images")
@@ -21,7 +20,7 @@ def main(not_parsed_args):
 		print("Unknown args:%s" % not_parsed_args)
 		exit()
 
-	model = DCSCN3.SuperResolution3(FLAGS, model_name=FLAGS.model_name, use_upsampling_model=False)
+	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name, use_upsampling_model=False)
 	model.build_graph()
 	model.build_summary_saver()
 	model.init_all_variables()

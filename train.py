@@ -2,6 +2,7 @@
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
 Author: Jin Yamanaka
 Github: https://github.com/jiny2001/dcscn-image-super-resolution
+Ver: 2.0
 
 Testing Environment: Python 3.6.1, tensorflow >= 1.3.0
 """
@@ -70,7 +71,7 @@ def train(model, flags, trial, load_model_name =""):
 
 	model.init_train_step()
 	model.init_epoch_index()
-	mse = model.evaluate(logging=False)
+	mse = model.evaluate_test_batch(logging=False)
 	model.lr_updated_lr.append(model.lr)
 	model.lr_updated_epoch.append(0)
 	model.lr_updated_psnr.append(util.get_psnr(mse))
@@ -85,7 +86,7 @@ def train(model, flags, trial, load_model_name =""):
 
 		if model.index_in_epoch >= model.train.input.count:
 			model.epochs_completed += 1
-			mse = model.evaluate(save_meta_data, trial)
+			mse = model.evaluate_test_batch(save_meta_data, trial)
 			save_meta_data = model.update_epoch_and_lr(mse)
 			model.print_status(mse)
 			model.init_epoch_index()
@@ -96,7 +97,6 @@ def train(model, flags, trial, load_model_name =""):
 
 	model.end_train_step()
 	model.save_model(trial=trial, output_log=True)
-	model.save_graphs(flags.graph_dir, trial)
 
 	model.report_updated_history()
 
@@ -104,7 +104,7 @@ def train(model, flags, trial, load_model_name =""):
 		model.print_weight_variables()
 
 	if FLAGS.evaluate_dataset == "":
-		mse = model.evaluate()
+		mse = model.evaluate_test_batch()
 		model.print_status(mse)
 	else:
 		if FLAGS.evaluate_dataset == "all":

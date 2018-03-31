@@ -1,26 +1,19 @@
 """
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
+Ver: 2
 
 functions for loading/converting data
 """
 
 import configparser
-import os
-
 import numpy as np
+import os
 
 from helper import utilty as util
 
 INPUT_IMAGE_DIR = "input"
 INTERPOLATED_IMAGE_DIR = "interpolated"
 TRUE_IMAGE_DIR = "true"
-
-
-def convert_to_multi_channel_image(multi_channel_image, image, scale):
-	multi_channel_image = image
-
-def convert_from_multi_channel_image(image, multi_channel_image, scale):
-	image = multi_channel_image
 
 def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True,
                      jpeg_mode=False, print_console=True):
@@ -63,11 +56,8 @@ def load_input_batch_image(batch_dir, image_number):
 	return util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
 
 
-def load_interpolated_batch_image(batch_dir, image_number, upsampling_model=None):
-	if upsampling_model is None:
-		return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
-	else:
-		return util.load_image(batch_dir + "/" + INTERPOLATED2_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+def load_interpolated_batch_image(batch_dir, image_number):
+	return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
 
 
 def load_true_batch_image(batch_dir, image_number):
@@ -77,29 +67,8 @@ def load_true_batch_image(batch_dir, image_number):
 def save_input_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, image)
 
-
-def save_interpolated_batch_image(batch_dir, image_number, image, upsampling_model=None):
-	if upsampling_model is None:
-		return util.save_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-	else:
-		return util.save_image(batch_dir + "/" + INTERPOLATED2_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-
-
-def save_true_batch_image(batch_dir, image_number, image):
-	return util.save_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-
-	image_dir = batch_dir + "/" + INTERPOLATED2_IMAGE_DIR
-
-
-def is_interpolated2_batch_dir_exist(batch_dir):
-	dir_name = batch_dir + "/" + INTERPOLATED2_IMAGE_DIR
-	return os.path.isdir(dir_name)
-
-
-def is_interpolated2_batch_image_exist(batch_dir, image_number):
-	filename = batch_dir + "/" + INTERPOLATED2_IMAGE_DIR + "/%06d.bmp" % image_number
-	return os.path.isfile(filename)
-
+def save_interpolated_batch_image(batch_dir, image_number, image):
+	return util.save_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
 
 def get_batch_count(batch_dir):
 	if not os.path.isdir(batch_dir):
@@ -166,7 +135,7 @@ class DataSet:
 		else:
 			return image
 
-	def load_batch_images(self, batch_dir, is_input, count, upsampling_model=None):
+	def load_batch_images(self, batch_dir, is_input, count):
 
 		self.release_images()
 
@@ -189,7 +158,7 @@ class DataSet:
 		for i in range(count):
 			if is_input:
 				self.images[i] = load_input_batch_image(batch_dir, i)
-				self.quad_images[i] = load_interpolated_batch_image(batch_dir, i, upsampling_model)
+				self.quad_images[i] = load_interpolated_batch_image(batch_dir, i)
 			else:
 				self.quad_images[i] = load_true_batch_image(batch_dir, i)
 
@@ -308,11 +277,9 @@ class DataSets:
 
 	def load_batch_image(self, batch_dir, index, image_number):
 		self.input.images[index] = load_input_batch_image(batch_dir, image_number)
-		quad_image = load_interpolated_batch_image(batch_dir, image_number)
-		convert_to_multi_channel_image(self.input.quad_images[index], quad_image, self.scale)
+		self.input.quad_images[index] = load_interpolated_batch_image(batch_dir, image_number)
 
-		quad_image = load_true_batch_image(batch_dir, image_number)
-		convert_to_multi_channel_image(self.true.quad_images[index], quad_image, self.scale)
+		self.true.quad_images[index] = load_true_batch_image(batch_dir, image_number)
 
 	def is_batch_exist(self, batch_dir):
 		if not os.path.isdir(batch_dir):
