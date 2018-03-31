@@ -266,46 +266,48 @@ class SuperResolution:
 			self.build_conv("up_conv_1", h, self.cnn_size, self.filters, 2 * 2 * self.filters,
 			                use_batch_norm=False, use_dropout=False, use_bias=True)
 			self.H.append(tf.depth_to_space(self.H[-1], 2))
-			self.build_activator(self.H[-1], self.filters, self.activator, name="prelu_up_conv_1")
+			self.build_activator(self.H[-1], self.filters, self.activator, base_name="up_conv_1")
 
 			if self.scale == 4:
 				self.build_conv("up_conv_2", self.H[-1], self.cnn_size, self.filters, 2 * 2 * self.filters,
 				                use_batch_norm=False, use_dropout=False, use_bias=True)
 				self.H.append(tf.depth_to_space(self.H[-1], 2))
-				self.build_activator(self.H[-1], self.filters, self.activator(), name="prelu_up_conv_2")
+				self.build_activator(self.H[-1], self.filters, self.activator(), base_name="up_conv_2")
 
 		elif self.scale == 3:
 			self.build_conv("up_conv_1", self.H[-1], self.cnn_size, self.filters, 3 * 3 * self.filters,
 			                use_batch_norm=False, use_dropout=False, use_bias=True)
 			self.H.append(tf.depth_to_space(self.H[-1], 3))
-			self.build_activator(self.H[-1], self.filters, self.activator, name="prelu_up_conv_1")
+			self.build_activator(self.H[-1], self.filters, self.activator, base_name="up_conv_1")
 		else:
 			logging.error("Error, scale:%d is not supported!" % self.scale)
 			return None
 
-	def build_activator(self, hidden, features, activator=None, leaky_relu_alpha=0.1, name=""):
+	def build_activator(self, input_tensor, features:int, activator="", leaky_relu_alpha=0.1, base_name=""):
 
-		if activator is None:
+		features=int(features)
+		if activator is None or "":
 			return
 		elif activator == "relu":
-			hidden = tf.nn.relu(hidden, name=name + "_relu")
+			hidden = tf.nn.relu(input_tensor, name=base_name + "_relu")
 		elif activator == "sigmoid":
-			hidden = tf.nn.sigmoid(hidden, name=name + "_sigmoid")
+			hidden = tf.nn.sigmoid(input_tensor, name=base_name + "_sigmoid")
 		elif activator == "tanh":
-			hidden = tf.nn.tanh(hidden, name=name + "_tanh")
+			hidden = tf.nn.tanh(input_tensor, name=base_name + "_tanh")
 		elif activator == "leaky_relu":
-			hidden = tf.maximum(hidden, leaky_relu_alpha * hidden, name=name + "_leaky")
+			hidden = tf.maximum(input_tensor, leaky_relu_alpha * input_tensor, name=base_name + "_leaky")
 		elif activator == "prelu":
 			with tf.variable_scope("prelu"):
-				alphas = tf.Variable(tf.constant(0.1, shape=[features]), name=name + "_prelu")
+				alphas = tf.Variable(tf.constant(0.1, shape=[features]), name=base_name + "_prelu")
 				if self.save_weights:
 					util.add_summaries("prelu_alpha", self.name, alphas, save_stddev=False, save_mean=False)
-					hidden = tf.nn.relu(hidden) + tf.multiply(alphas, (hidden - tf.abs(hidden))) * 0.5
+					hidden = tf.nn.relu(input_tensor) + tf.multiply(alphas, (input_tensor - tf.abs(input_tensor))) * 0.5
 		else:
 			raise NameError('Not implemented activator:%s' % activator)
 
-		self.complexity += self.pix_per_input * features
-		self.H.append(hidden)
+		self.complexity += (self.pix_per_input * features)
+		#self.H.append(hidden)
+		return hidden
 
   # new version
 	# def conv2d(self, x, w, stride, bias=None, batch_norm=False, name=""):
@@ -323,112 +325,64 @@ class SuperResolution:
 	# 	return output
 
 
-	def conv2d(self, x, w, stride, bias=None, activator=None, leaky_relu_alpha=0.1, batch_norm=False, name=""):
+	def conv2d(self, x, w, stride, bias=None, activator="", leaky_relu_alpha=0.1, batch_norm=False, name=""):
 
-		if batch_norm:
-			conv = tf.contrib.layers.batch_norm(x, center=True, scale=True, is_training=self.is_training, scope='bn')
+		conv = tf.nn.conv2d(x, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
+		self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
 
-			if activator is not None:
-				activator_dim = x.get_shape()[3]
-				if activator == "relu":
-					conv = tf.nn.relu(conv, name=name + "_relu")
-				elif activator == "sigmoid":
-					conv = tf.nn.sigmoid(conv, name=name + "_sigmoid")
-				elif activator == "tanh":
-					conv = tf.nn.tanh(conv, name=name + "_tanh")
-				elif activator == "leaky_relu":
-					conv = tf.maximum(conv, leaky_relu_alpha * conv, name=name + "_leaky")
-				elif activator == "prelu":
-					with tf.variable_scope("prelu"):
-						alphas = tf.Variable(tf.constant(0.1, shape=[activator_dim]), name=name + "_prelu")
-						if self.save_weights:
-							util.add_summaries("prelu_alpha", self.name, alphas, save_stddev=False, save_mean=False)
-						conv = tf.nn.relu(conv) + tf.multiply(alphas, (conv - tf.abs(conv))) * 0.5
-				else:
-					raise NameError('Not implemented activator:%s' % activator)
-				self.complexity += self.pix_per_input * int(bias.shape[0])
-
-			conv = tf.nn.conv2d(conv, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
-			self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
-
-			if bias is not None:
-				conv = tf.add(conv, bias, name=name + "_add")
-				self.complexity += self.pix_per_input * int(bias.shape[0])
-
-		else:
-			conv = tf.nn.conv2d(x, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
-			self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
-
-			if bias is not None:
-				conv = tf.add(conv, bias, name=name + "_add")
-				self.complexity += self.pix_per_input * int(bias.shape[0])
-
-			if activator is not None:
-				if activator == "relu":
-					conv = tf.nn.relu(conv, name=name + "_relu")
-				elif activator == "sigmoid":
-					conv = tf.nn.sigmoid(conv, name=name + "_sigmoid")
-				elif activator == "tanh":
-					conv = tf.nn.tanh(conv, name=name + "_tanh")
-				elif activator == "leaky_relu":
-					conv = tf.maximum(conv, leaky_relu_alpha * conv, name=name + "_leaky")
-				elif activator == "prelu":
-					with tf.variable_scope("prelu"):
-						alphas = tf.Variable(tf.constant(0.1, shape=[w.get_shape()[3]]), name=name + "_prelu")
-						if self.save_weights:
-							util.add_summaries("prelu_alpha", self.name, alphas, save_stddev=False, save_mean=False)
-						conv = tf.nn.relu(conv) + tf.multiply(alphas, (conv - tf.abs(conv))) * 0.5
-				else:
-					raise NameError('Not implemented activator:%s' % activator)
-				self.complexity += self.pix_per_input * int(bias.shape[0])
+		if bias is not None:
+			conv = tf.add(conv, bias, name=name + "_add")
+			self.complexity += self.pix_per_input * int(bias.shape[0])
 
 		return conv
 
 
-
 	# new version
-	# def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_bias=True,
-	#                activator=None, use_batch_norm=False, use_dropout=True):
-	#
-	# 	with tf.variable_scope(name):
-	# 		w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
-	# 		                stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
-	#
-	# 		b = util.bias([output_feature_num], name="conv_B") if use_bias else None
-	# 		h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, batch_norm=use_batch_norm, name=name)
-	#
-	# 		if activator is not None:
-	# 			self.build_activator(h, output_feature_num, activator, name=name)
-	# 			if use_dropout and self.dropout != 1.0:
-	# 				self.H[-1] = tf.nn.dropout(self.H[-1], self.dropout_input, name="dropout")
-	# 		else:
-	# 			#todo: refine dropout graph
-	# 			if use_dropout and self.dropout != 1.0:
-	# 				h = tf.nn.dropout(h, self.dropout_input, name="dropout")
-	# 			self.H.append(h)
-	#
-	# 		if self.save_weights:
-	# 			util.add_summaries("weight", self.name, w, save_stddev=True, save_mean=True)
-	# 			util.add_summaries("output", self.name, h, save_stddev=True, save_mean=True)
-	# 			if use_bias:
-	# 				util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
-	#
-	# 		#todo check
-	# 		if self.save_images and cnn_size > 1 and input_feature_num == 1:
-	# 			weight_transposed = tf.transpose(w, [3, 0, 1, 2])
-	#
-	# 			with tf.name_scope("image"):
-	# 				tf.summary.image(self.name, weight_transposed, max_outputs=self.log_weight_image_num)
-	#
-	# 	if self.receptive_fields == 0:
-	# 		self.receptive_fields = cnn_size
-	# 	else:
-	# 		self.receptive_fields += (cnn_size - 1)
-	# 	self.features += "%d " % output_feature_num
-	#
-	# 	self.Weights.append(w)
-	# 	if use_bias:
-	# 		self.Biases.append(b)
+	def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_bias=False,
+	               activator=None, use_batch_norm=False, use_dropout=False):
+
+		with tf.variable_scope(name):
+			w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
+			                stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
+
+			b = util.bias([output_feature_num], name="conv_B") if use_bias else None
+			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, batch_norm=use_batch_norm, name=name)
+
+			if activator is not None:
+				h = self.build_activator(h, output_feature_num, activator, base_name=name)
+				if use_dropout and self.dropout != 1.0:
+					h = tf.nn.dropout(h, self.dropout_input, name="dropout")
+			else:
+				#todo: refine dropout graph
+				if use_dropout and self.dropout != 1.0:
+					h = tf.nn.dropout(h, self.dropout_input, name="dropout")
+
+			self.H.append(h)
+
+			if self.save_weights:
+				util.add_summaries("weight", self.name, w, save_stddev=True, save_mean=True)
+				util.add_summaries("output", self.name, h, save_stddev=True, save_mean=True)
+				if use_bias:
+					util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
+
+			#todo check
+			if self.save_images and cnn_size > 1 and input_feature_num == 1:
+				weight_transposed = tf.transpose(w, [3, 0, 1, 2])
+
+				with tf.name_scope("image"):
+					tf.summary.image(self.name, weight_transposed, max_outputs=self.log_weight_image_num)
+
+		if self.receptive_fields == 0:
+			self.receptive_fields = cnn_size
+		else:
+			self.receptive_fields += (cnn_size - 1)
+		self.features += "%d " % output_feature_num
+
+		self.Weights.append(w)
+		if use_bias:
+			self.Biases.append(b)
+
+		return h
 
 	def build_conv_and_bias(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_activator=True,
 	                        use_batch_norm=False, use_dropout=True):
@@ -439,6 +393,8 @@ class SuperResolution:
 			h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, batch_norm=use_batch_norm,
 			                activator=self.activator if use_activator else None,
 			                name=name)
+			if use_activator:
+				h = self.build_activator(h, output_feature_num, self.activator, base_name=name)
 
 			if use_dropout and self.dropout != 1.0:
 				h = tf.nn.dropout(h, self.dropout_input, name="dropout")
@@ -462,6 +418,8 @@ class SuperResolution:
 		self.Biases.append(b)
 		return h
 
+#old ver
+	"""
 	def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num):
 		with tf.variable_scope(name):
 			w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
@@ -483,6 +441,7 @@ class SuperResolution:
 
 		self.Weights.append(w)
 		return h
+"""
 
 	def build_transposed_conv(self, name, input_tensor, scale, channels):
 		with tf.variable_scope(name):
@@ -502,7 +461,7 @@ class SuperResolution:
 
 		self.Weights.append(w)
 		self.H.append(h)
-		return h
+
 
 	def build_input_batch(self, batch_dir):
 
@@ -605,7 +564,8 @@ class SuperResolution:
 		# building feature extraction layers
 		self.Weights = []
 		self.Biases = []
-		self.H = self.layers * [None]
+		self.features = ""
+		self.H = []
 
 		output_feature_num = self.layers * [0]
 		total_output_feature_num = 0
@@ -626,13 +586,13 @@ class SuperResolution:
 			total_output_feature_num += output_feature_num[i]
 			features += "%d " % output_feature_num[i]
 
-			self.H[i] = self.build_conv_and_bias("conv%d" % i, input_tensor, self.cnn_size,
+			self.build_conv("conv%d" % i, input_tensor, self.cnn_size,
 			                                     input_feature_num,
-			                                     output_feature_num[i],
+			                                     output_feature_num[i],use_bias=True,activator=self.activator,
 			                                     use_batch_norm=self.batch_norm,
 			                                     use_dropout=use_dropout)
 			input_feature_num = output_feature_num[i]
-			input_tensor = self.H[i]
+			input_tensor = self.H[-1]
 
 		with tf.variable_scope("concat"):
 			self.H_concat = tf.concat(self.H, 3, name="H_concat")
@@ -642,41 +602,39 @@ class SuperResolution:
 
 		if self.nin_filters == 0:
 			upsampling_layer_input_channels = total_output_feature_num
-			upsampling_layer_input = self.H_concat
 		else:
 			if self.nin:
-				self.H_A1 = self.build_conv_and_bias("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
-				                                     use_dropout=use_dropout)
+				self.build_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
+				                                     use_dropout=use_dropout,use_bias=True,activator=self.activator)
 				self.receptive_fields -= (self.cnn_size - 1)
 
-				self.H_B1 = self.build_conv_and_bias("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
-				                                     use_dropout=use_dropout)
+				self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
+				                                     use_dropout=use_dropout,use_bias=True,activator=self.activator)
 
-				self.H_B2 = self.build_conv_and_bias("B2", self.H_B1, 3, self.nin_filters2, self.nin_filters2,
-				                                     use_dropout=use_dropout)
+				self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
+				                                     use_dropout=use_dropout,use_bias=True,activator=self.activator)
 
 				#				self.H_concat2 = tf.concat([self.H[0], self.H2[0], self.H2[1]], 3, name="H_concat2")
-				upsampling_layer_input = tf.concat([self.H_A1, self.H_B2], 3, name="H_concat2")
+				self.H.append( tf.concat([self.H[-1], self.H[-3]], 3, name="H_concat2"))
 				upsampling_layer_input_channels = self.nin_filters + self.nin_filters2
 			else:
-				upsampling_layer_input = self.build_conv_and_bias("A1", self.H_concat, 1, total_output_feature_num,
+				self.build_conv("A1", self.H_concat, 1, total_output_feature_num,
 				                                                  self.nin_filters,
-				                                                  use_dropout=use_dropout)
+				                                                  use_dropout=use_dropout,use_bias=True,activator=self.activator)
 				upsampling_layer_input_channels = self.nin_filters
 
 		# building upsampling layer
-		self.H_out0 = self.build_transposed_conv("Up", upsampling_layer_input, self.scale, upsampling_layer_input_channels)
+		self.build_transposed_conv("Up", self.H[-1], self.scale, upsampling_layer_input_channels)
 
-		h = self.H_out0
 		input_channels = upsampling_layer_input_channels
 		for i in range(self.last_layers):
-			h = self.build_conv_and_bias("L%d" % (i + 1), h, self.last_cnn_size, input_channels, self.last_filters,
-			                             use_dropout=use_dropout)
+			h = self.build_conv("L%d" % (i + 1), self.H[-1], self.last_cnn_size, input_channels, self.last_filters,
+			                             use_dropout=use_dropout,use_bias=True,activator=self.activator)
 			input_channels = self.last_filters
 
-		self.H_out = self.build_conv("F", h, self.last_cnn_size, input_channels, self.output_channels)
+		self.build_conv("F", self.H[-1], self.last_cnn_size, input_channels, self.output_channels)
 
-		self.y_ = self.H_out + self.x2
+		self.y_ = self.H[-1] + self.x2
 		self.weights = self.Weights
 
 		logging.info("Feature:%s Complexity:%s Receptive Fields:%d" % (
