@@ -9,6 +9,7 @@ import logging
 import os
 import random
 import time
+
 import numpy as np
 import tensorflow as tf
 
@@ -25,6 +26,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		# Model Parameters
 		self.filters = flags.filters
 		self.min_filters = flags.min_filters
+		self.filters_decay_gamma = flags.filters_decay_gamma
 		self.use_nin = flags.use_nin
 		self.nin_filters = flags.nin_filters
 		self.nin_filters2 = flags.nin_filters2
@@ -34,8 +36,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.layers = flags.layers
 		self.resampling_method = BICUBIC_METHOD_STRING
 		self.self_ensemble = flags.self_ensemble
-
-		self.filters_decay_gamma = flags.filters_decay_gamma
 
 		# Training Parameters
 		self.l2_decay = flags.l2_decay
@@ -81,11 +81,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			util.clean_dir(self.tf_log_dir)
 		util.set_logging(flags.log_filename, stream_log_level=logging.INFO, file_log_level=logging.INFO,
 		                 tf_log_level=tf.logging.WARN)
-
-		self.init_train_step()
-
 		logging.info("\nDCSCN v2-------------------------------------")
 		logging.info("%s [%s]" % (util.get_now_date(), self.name))
+
+		self.init_train_step()
 
 	def get_model_name(self, model_name, name_postfix=""):
 		if model_name is "":
@@ -181,7 +180,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.training_mse_sum = 0
 		self.training_step = 0
 
-
 	def build_input_batch(self, batch_dir):
 
 		# adjust input batch length
@@ -199,7 +197,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			self.batch_input_quad[i] = loader.load_interpolated_batch_image(batch_dir, image_no)
 			self.batch_true_quad[i] = loader.load_true_batch_image(batch_dir, image_no)
 			self.index_in_epoch += 1
-
 
 	def build_graph(self):
 
@@ -279,7 +276,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		if self.l2_decay > 0:
 			l2_losses = [tf.nn.l2_loss(w) for w in self.Weights]
-			#	l1_losses = [tf.reduce_sum(tf.abs(w)) for w in self.weights]  # l1 loss
+			# l1_losses = [tf.reduce_sum(tf.abs(w)) for w in self.weights]  # l1 loss
 
 			l2_loss = self.l2_decay * tf.add_n(l2_losses)
 			loss += l2_loss
@@ -351,7 +348,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.step += 1
 
 	# todo check profiler op
-	def evaluate_test_batch(self, save_meta_data=False, trial=0, logging=True):
+	def evaluate_test_batch(self, save_meta_data=False, trial=0, log_profile=True):
 
 		save_meta_data = save_meta_data and self.save_meta_data and (trial == 0)
 		feed_dict = {self.x: self.test.input.images,
@@ -360,7 +357,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		             self.dropout: 1.0,
 		             self.is_training: 0}
 
-		if logging and (self.save_loss or self.save_weights or save_meta_data):
+		if log_profile and (self.save_loss or self.save_weights or save_meta_data):
 
 			if save_meta_data:
 				# profiler = tf.profiler.Profile(self.sess.graph)
@@ -514,7 +511,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			image = self.do(org_image)
 
 		util.save_image(output_folder + filename + "_result" + extension, image)
-
 
 	def do_for_evaluate(self, file_path, output_directory="output", output=True, print_console=False):
 

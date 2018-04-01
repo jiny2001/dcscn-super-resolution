@@ -71,7 +71,7 @@ def train(model, flags, trial, load_model_name =""):
 
 	model.init_train_step()
 	model.init_epoch_index()
-	mse = model.evaluate_test_batch(logging=False)
+	mse = model.evaluate_test_batch(log_profile=False)
 	model.lr_updated_lr.append(model.lr)
 	model.lr_updated_epoch.append(0)
 	model.lr_updated_psnr.append(util.get_psnr(mse))

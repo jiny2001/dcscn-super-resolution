@@ -6,14 +6,16 @@ functions for loading/converting data
 """
 
 import configparser
-import numpy as np
 import os
+
+import numpy as np
 
 from helper import utilty as util
 
 INPUT_IMAGE_DIR = "input"
 INTERPOLATED_IMAGE_DIR = "interpolated"
 TRUE_IMAGE_DIR = "true"
+
 
 def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True,
                      jpeg_mode=False, print_console=True):
@@ -67,8 +69,14 @@ def load_true_batch_image(batch_dir, image_number):
 def save_input_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, image)
 
+
 def save_interpolated_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
+
+
+def save_true_batch_image(batch_dir, image_number, image):
+	return util.save_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
+
 
 def get_batch_count(batch_dir):
 	if not os.path.isdir(batch_dir):
@@ -310,4 +318,3 @@ class DataSets:
 
 		except IOError:
 			return False
-
