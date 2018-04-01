@@ -464,16 +464,21 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 	if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
 		return None
 
-	if image1.dtype == np.uint8:
-		image1 = image1.astype(np.double)
-	if image2.dtype == np.uint8:
-		image2 = image2.astype(np.double)
+	image1 = trim_image_as_file(image1)
+	image2 = trim_image_as_file(image2)
 
 	loss_image = np.multiply(np.square(np.subtract(image1, image2)), scale)
 	loss_image = np.minimum(loss_image, 255.0)
 	loss_image = loss_image[border_size:-border_size, border_size:-border_size, :]
 
 	return loss_image
+
+def trim_image_as_file(image):
+
+	if image.dtype != np.uint8:
+		image = image.astype(np.uint8)
+	return np.clip(image.astype(np.double), 0, 255,0)
+
 
 
 def compute_mse(image1, image2, border_size=0):
@@ -485,10 +490,8 @@ def compute_mse(image1, image2, border_size=0):
 	if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
 		return None
 
-	if image1.dtype == np.uint8:
-		image1 = image1.astype(np.double)
-	if image2.dtype == np.uint8:
-		image2 = image2.astype(np.double)
+	image1 = trim_image_as_file(image1)
+	image2 = trim_image_as_file(image2)
 
 	mse = 0.0
 	for i in range(border_size, image1.shape[0] - border_size):
