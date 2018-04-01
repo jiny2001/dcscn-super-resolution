@@ -14,23 +14,22 @@ args.flags.DEFINE_boolean("save_results", True, "Save result, bicubic and loss i
 
 FLAGS = args.get()
 
-
 def main(not_parsed_args):
 	if len(not_parsed_args) > 1:
 		print("Unknown args:%s" % not_parsed_args)
 		exit()
 
-	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name, use_upsampling_model=False)
+	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 	model.build_graph()
 	model.build_summary_saver()
 	model.init_all_variables()
 
 	logging.info("evaluate model performance")
 
-	if FLAGS.test_dataset == "all":
+	if FLAGS.evaluate_dataset == "all":
 		test_list = ['set5', 'set14', 'bsd100']
 	else:
-		test_list = [FLAGS.test_dataset]
+		test_list = [FLAGS.evaluate_dataset]
 
 	for i in range(FLAGS.tests):
 		model.load_model(FLAGS.load_model_name, trial = i, output_log=True if FLAGS.tests > 1 else False)
