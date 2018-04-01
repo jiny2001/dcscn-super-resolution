@@ -10,21 +10,22 @@ import math
 import os
 import time
 from os import listdir
-from os.path import isfile, join
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+from os.path import isfile, join
 from scipy import misc
 from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
 
 MARKERS = [['red', 100, 'o'], ['black', 100, 'x'], ['cyan', 100, 'd'], ['blue', 150, '1'], ['purple', 100, 's'],
            ['green', 100, 'v'], ['yellow', 100, 'o'], ['orange', 100, 'o'], ['magenta', 100, 'o'], ['pink', 100, 'o'],
            ['brown', 100, 'o'], ['darkgreen', 100, 'o']]
 MARKERS2 = [['red', 300, 'o'], ['black', 300, 'x'], ['cyan', 300, 'd'], ['blue', 450, '1'], ['purple', 300, 's'],
-           ['green', 300, 'v'], ['yellow', 300, 'o'], ['orange', 300, 'o'], ['magenta', 300, 'o'], ['pink', 300, 'o'],
-           ['brown', 300, 'o'], ['darkgreen', 300, 'o']]
+            ['green', 300, 'v'], ['yellow', 300, 'o'], ['orange', 300, 'o'], ['magenta', 300, 'o'], ['pink', 300, 'o'],
+            ['brown', 300, 'o'], ['darkgreen', 300, 'o']]
+
 
 class Timer:
 	def __init__(self, timer_count=100):
@@ -60,10 +61,12 @@ def make_dir(directory):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 
+
 def delete_dir(directory):
 	if os.path.exists(directory):
 		clean_dir(directory)
 		os.rmdir(directory)
+
 
 def get_files_in_directory(path):
 	if not path.endswith('/'):
@@ -215,6 +218,7 @@ def set_image_alignment(image, alignment):
 
 	return image
 
+
 def resize_image_by_pil(image, scale, resampling_method="bicubic"):
 	width, height = image.shape[1], image.shape[0]
 	new_width = int(width * scale)
@@ -326,22 +330,20 @@ def get_split_images(image, window_size, stride=None, enable_duplicate=False):
 	return windows
 
 
-# divide images with given stride. will return variable size images. not allowed to be overlapped or less except frame.
+# divide images with given stride. note return image size may not equal to window size.
 def get_divided_images(image, window_size, stride, min_size=0):
-
 	h, w = image.shape[:2]
 	divided_images = []
 
 	for y in range(0, h, stride):
 		for x in range(0, w, stride):
 
-			new_h = window_size if y+window_size <= h else h - y
-			new_w = window_size if x+window_size <= w else w - x
+			new_h = window_size if y + window_size <= h else h - y
+			new_w = window_size if x + window_size <= w else w - x
 			if new_h < min_size or new_w < min_size:
 				continue
 
-#			print ("(%d,%d-%d,%d)"%(x,y, x+new_w, y+new_h))
-			divided_images.append( image[y:y + new_h, x:x + new_w, :] )
+			divided_images.append(image[y:y + new_h, x:x + new_w, :])
 
 	return divided_images
 
@@ -363,8 +365,8 @@ def he_initializer(shape):
 	stddev = math.sqrt(2.0 / n)
 	return tf.truncated_normal(shape=shape, stddev=stddev)
 
-def upsample_filter(size):
 
+def upsample_filter(size):
 	factor = (size + 1) // 2
 	if size % 2 == 1:
 		center = factor - 1
@@ -374,18 +376,19 @@ def upsample_filter(size):
 
 	return (1 - abs(og[0] - center) / factor) * (1 - abs(og[1] - center) / factor)
 
+
 def get_upscale_filter_size(scale):
 	return 2 * scale - scale % 2
 
-def upscale_weight(scale, channels, name="weight"):
 
+def upscale_weight(scale, channels, name="weight"):
 	cnn_size = get_upscale_filter_size(scale)
 
-	initial = np.zeros(shape=[cnn_size, cnn_size, channels, channels],dtype=np.float32)
-	filter=upsample_filter(cnn_size)
+	initial = np.zeros(shape=[cnn_size, cnn_size, channels, channels], dtype=np.float32)
+	filter_matrix = upsample_filter(cnn_size)
 
 	for i in range(channels):
-		initial[:, :, i, i] = filter
+		initial[:, :, i, i] = filter_matrix
 
 	return tf.Variable(initial, name=name)
 
@@ -441,8 +444,8 @@ def add_summaries(scope_name, model_name, var, save_stddev=True, save_mean=False
 			tf.summary.scalar("min/" + model_name, tf.reduce_min(var))
 		tf.summary.histogram(model_name, var)
 
-def log_scalar_value(writer, name, value, step):
 
+def log_scalar_value(writer, name, value, step):
 	summary = tf.Summary(value=[tf.Summary.Value(tag=name, simple_value=value)])
 	writer.add_summary(summary, step)
 
@@ -461,16 +464,21 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 	if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
 		return None
 
-	if image1.dtype == np.uint8:
-		image1 = image1.astype(np.double)
-	if image2.dtype == np.uint8:
-		image2 = image2.astype(np.double)
+	image1 = trim_image_as_file(image1)
+	image2 = trim_image_as_file(image2)
 
 	loss_image = np.multiply(np.square(np.subtract(image1, image2)), scale)
 	loss_image = np.minimum(loss_image, 255.0)
 	loss_image = loss_image[border_size:-border_size, border_size:-border_size, :]
 
 	return loss_image
+
+def trim_image_as_file(image):
+
+	if image.dtype != np.uint8:
+		image = image.astype(np.uint8)
+	return np.clip(image.astype(np.double), 0, 255,0)
+
 
 
 def compute_mse(image1, image2, border_size=0):
@@ -482,10 +490,8 @@ def compute_mse(image1, image2, border_size=0):
 	if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
 		return None
 
-	if image1.dtype == np.uint8:
-		image1 = image1.astype(np.double)
-	if image2.dtype == np.uint8:
-		image2 = image2.astype(np.double)
+	image1 = trim_image_as_file(image1)
+	image2 = trim_image_as_file(image2)
 
 	mse = 0.0
 	for i in range(border_size, image1.shape[0] - border_size):
@@ -499,13 +505,13 @@ def compute_mse(image1, image2, border_size=0):
 
 def print_filter_weights(tensor):
 	print("Tensor[%s] shape=%s" % (tensor.name, str(tensor.get_shape())))
-	weight = tensor.eval()
-	for i in range(weight.shape[3]):
+	weight_value = tensor.eval()
+	for i in range(weight_value.shape[3]):
 		values = ""
-		for x in range(weight.shape[0]):
-			for y in range(weight.shape[1]):
-				for c in range(weight.shape[2]):
-					values += "%2.3f " % weight[y][x][c][i]
+		for x in range(weight_value.shape[0]):
+			for y in range(weight_value.shape[1]):
+				for c in range(weight_value.shape[2]):
+					values += "%2.3f " % weight_value[y][x][c][i]
 		print(values)
 	print("\n")
 
@@ -552,6 +558,7 @@ def print_num_of_total_parameters(output_detail=False, output_to_logging=False):
 			print(parameters_string)
 		print("Total %d variables, %s params" % (len(tf.trainable_variables()), "{:,}".format(total_parameters)))
 
+
 def plot_with_labels(attributes, filename, markers=None, perplexity=25, n_iter=1000):
 	print('Drawing scatter plot on [%s]...' % filename)
 
@@ -572,9 +579,10 @@ def plot_with_labels(attributes, filename, markers=None, perplexity=25, n_iter=1
 			plot_scatter(x, y, marker=markers[i])
 
 	for i in range(8):
-		plt.scatter(-1000 + (i+1)*40, 110, color=MARKERS[i][0], s=MARKERS[i][1] * 9 // 2, marker=MARKERS[i][2])
+		plt.scatter(-1000 + (i + 1) * 40, 110, color=MARKERS[i][0], s=MARKERS[i][1] * 9 // 2, marker=MARKERS[i][2])
 
 	plt.savefig(filename)
+
 
 def plot_scatter(x, y, marker=0):
 	if marker >= len(MARKERS):
@@ -583,25 +591,25 @@ def plot_scatter(x, y, marker=0):
 	plt.scatter(x, y, color=MARKERS[marker][0], s=MARKERS[marker][1] * 3 // 2, marker=MARKERS[marker][2])
 
 
-def flip(image, type, invert=False):
-	if type == 0:
+def flip(image, flip_type, invert=False):
+	if flip_type == 0:
 		return image
-	elif type == 1:
+	elif flip_type == 1:
 		return np.flipud(image)
-	elif type == 2:
+	elif flip_type == 2:
 		return np.fliplr(image)
-	elif type == 3:
+	elif flip_type == 3:
 		return np.flipud(np.fliplr(image))
-	elif type == 4:
+	elif flip_type == 4:
 		return np.rot90(image, 1 if invert is False else -1)
-	elif type == 5:
+	elif flip_type == 5:
 		return np.rot90(image, -1 if invert is False else 1)
-	elif type == 6:
+	elif flip_type == 6:
 		if invert is False:
 			return np.flipud(np.rot90(image))
 		else:
 			return np.rot90(np.flipud(image), -1)
-	elif type == 7:
+	elif flip_type == 7:
 		if invert is False:
 			return np.flipud(np.rot90(image, -1))
 		else:
