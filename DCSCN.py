@@ -259,7 +259,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			input_channels = self.last_filters
 
 		# todo use dropout?
-		self.build_conv("F", self.H[-1], self.last_cnn_size, input_channels, self.output_channels)
+		self.build_conv("F", self.H[-1], self.last_cnn_size, input_channels, self.output_channels, dropout_rate=self.dropout_rate)
 
 		self.y_ = self.H[-1] + self.x2
 
