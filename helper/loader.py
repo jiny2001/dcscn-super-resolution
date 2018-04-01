@@ -70,6 +70,9 @@ def save_input_batch_image(batch_dir, image_number, image):
 def save_interpolated_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
 
+def save_true_batch_image(batch_dir, image_number, image):
+	return util.save_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
+
 def get_batch_count(batch_dir):
 	if not os.path.isdir(batch_dir):
 		return 0
