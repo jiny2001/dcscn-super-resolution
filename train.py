@@ -9,6 +9,7 @@ Testing Environment: Python 3.6.1, tensorflow >= 1.3.0
 
 import logging
 import sys
+
 import tensorflow as tf
 
 import DCSCN
@@ -63,8 +64,7 @@ def main(not_parsed_args):
 	model.copy_log_to_archive("archive")
 
 
-def train(model, flags, trial, load_model_name =""):
-
+def train(model, flags, trial, load_model_name=""):
 	model.init_all_variables()
 	if load_model_name != "":
 		model.load_model(load_model_name, output_log=True)
@@ -81,7 +81,7 @@ def train(model, flags, trial, load_model_name =""):
 
 	while model.lr > flags.end_lr:
 
-		model.build_input_batch(flags.batch_dir + "/" + flags.dataset+"/scale%d"%flags.scale)
+		model.build_input_batch(flags.batch_dir + "/" + flags.dataset + "/scale%d" % flags.scale)
 		model.train_batch()
 
 		if model.index_in_epoch >= model.train.input.count:
@@ -117,7 +117,6 @@ def train(model, flags, trial, load_model_name =""):
 
 
 def test(model, test_data):
-
 	test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
 	total_psnr = total_mse = 0
 
@@ -128,6 +127,7 @@ def test(model, test_data):
 
 	logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
 		test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+
 
 if __name__ == '__main__':
 	tf.app.run()

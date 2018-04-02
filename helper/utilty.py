@@ -477,8 +477,7 @@ def trim_image_as_file(image):
 
 	if image.dtype != np.uint8:
 		image = image.astype(np.uint8)
-	return np.clip(image.astype(np.double), 0, 255,0)
-
+	return np.clip(image.astype(np.double), 0, 255)
 
 
 def compute_mse(image1, image2, border_size=0):
