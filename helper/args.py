@@ -45,9 +45,9 @@ flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, 
 flags.DEFINE_float("clipping_norm", 5, "Norm for gradient clipping")
 
 # Learning Rate Control for Training
-flags.DEFINE_float("initial_lr", 0.001, "Initial learning rate")
+flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
-flags.DEFINE_integer("lr_decay_epoch", 4, "Decay learning rate when loss does not decrease")
+flags.DEFINE_integer("lr_decay_epoch", 10, "")
 flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
 
 # Dataset or Others

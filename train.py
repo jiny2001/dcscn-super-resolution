@@ -65,6 +65,7 @@ def main(not_parsed_args):
 
 
 def train(model, flags, trial, load_model_name=""):
+
 	model.init_all_variables()
 	if load_model_name != "":
 		model.load_model(load_model_name, output_log=True)
@@ -76,7 +77,6 @@ def train(model, flags, trial, load_model_name=""):
 	model.lr_updated_epoch.append(0)
 	model.lr_updated_psnr.append(util.get_psnr(mse))
 	model.print_status(mse)
-	min_mse = -1
 	save_meta_data = True
 
 	while model.lr > flags.end_lr:
@@ -91,15 +91,13 @@ def train(model, flags, trial, load_model_name=""):
 			model.print_status(mse)
 			model.init_epoch_index()
 
-			if min_mse == -1 or min_mse > mse:
-				model.save_model(trial=trial)
-				min_mse = mse
-
 	model.end_train_step()
 	model.save_model(trial=trial, output_log=True)
 
+	#todo delete
 	model.report_updated_history()
 
+	#todo delete
 	if flags.debug:
 		model.print_weight_variables()
 

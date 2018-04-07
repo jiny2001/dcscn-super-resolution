@@ -309,7 +309,7 @@ class DataSets:
 				return False
 			if config.getboolean("batch", "jpeg_mode") != self.jpeg_mode:
 				return False
-			if config.getint("batch", "max_value") != self.max_value:
+			if config.getfloat("batch", "max_value") != self.max_value:
 				return False
 
 			return True

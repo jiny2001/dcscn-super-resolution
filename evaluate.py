@@ -6,13 +6,16 @@ functions for evaluating results
 """
 
 import logging
+
 import tensorflow as tf
+
 import DCSCN
 from helper import args, utilty as util
 
 args.flags.DEFINE_boolean("save_results", True, "Save result, bicubic and loss images")
 
 FLAGS = args.get()
+
 
 def main(not_parsed_args):
 	if len(not_parsed_args) > 1:
@@ -32,13 +35,12 @@ def main(not_parsed_args):
 		test_list = [FLAGS.evaluate_dataset]
 
 	for i in range(FLAGS.tests):
-		model.load_model(FLAGS.load_model_name, trial = i, output_log=True if FLAGS.tests > 1 else False)
+		model.load_model(FLAGS.load_model_name, trial=i, output_log=True if FLAGS.tests > 1 else False)
 		for test_data in test_list:
 			test(model, test_data)
 
 
 def test(model, test_data):
-
 	test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
 	total_psnr = total_mse = 0
 

@@ -405,20 +405,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
 	def update_epoch_and_lr(self, mse):
 		lr_updated = False
 
-		if self.min_validation_mse < 0 or self.min_validation_mse > mse:
-			# update new mse
-			self.min_validation_epoch = self.epochs_completed
-			self.min_validation_mse = mse
-		else:
-			if self.epochs_completed > self.min_validation_epoch + self.lr_decay_epoch:
-				# set new learning rate
-				self.lr_updated_lr.append(self.lr)
-				self.lr_updated_epoch.append(self.epochs_completed)
-				self.lr_updated_psnr.append(util.get_psnr(mse))
+		self.epochs_completed_in_stage += 1
 
-				self.min_validation_epoch = self.epochs_completed
-				self.lr *= self.lr_decay
-				lr_updated = True
+		if self.epochs_completed_in_stage > self.lr_decay_epoch:
+			# set new learning rate
+			self.lr_updated_lr.append(self.lr)
+			self.lr_updated_epoch.append(self.epochs_completed)
+			self.lr_updated_psnr.append(util.get_psnr(mse))
+
+			self.lr *= self.lr_decay
+			lr_updated = True
+			self.epochs_completed_in_stage = 0
 
 		return lr_updated
 
@@ -430,11 +427,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			logging.info("Initial MSE:%f PSNR:%f" % (mse, psnr))
 		else:
 			processing_time = (time.time() - self.start_time) / self.step
-			line_a = "%s Step:%d MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
-				util.get_now_date(), self.step, mse, psnr, self.training_psnr_sum / self.training_step)
-			line_b = "Epoch:%d (Step:%s) LR:%f (%2.3fsec/step) MinPSNR:%0.3f" % (
-				self.epochs_completed, "{:,}".format(self.step), self.lr, processing_time,
-				util.get_psnr(self.min_validation_mse))
+			line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
+				util.get_now_date(), "{:,}".format(self.step), mse, psnr, self.training_psnr_sum / self.training_step)
+			line_b = "Epoch:%d LR:%f (%2.3fsec/step)" % ( self.epochs_completed, self.lr, processing_time)
 			if log:
 				logging.info(line_a)
 				logging.info(line_b)
@@ -575,6 +570,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 	def init_train_step(self):
 		self.lr = self.initial_lr
 		self.epochs_completed = 0
+		self.epochs_completed_in_stage = 0
 		self.min_validation_mse = -1
 		self.min_validation_epoch = -1
 		self.step = 0
