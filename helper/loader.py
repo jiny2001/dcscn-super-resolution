@@ -7,7 +7,7 @@ functions for loading/converting data
 
 import configparser
 import os
-
+import random
 import numpy as np
 
 from helper import utilty as util
@@ -316,3 +316,22 @@ class DataSets:
 
 		except IOError:
 			return False
+
+
+def load_random_patch(filename, patch_width, patch_height, jpeg_mode):
+	image = util.load_image(filename, print_console=False)
+	height, width = image.shape[0:2]
+
+	if height < patch_height or width < patch_width:
+		return None
+
+	y = random.randrange(height - patch_height)
+	x = random.randrange(width - patch_width)
+	image = image[y:y + patch_height, x:x + patch_width, :]
+	image = build_input_image(image, jpeg_mode=jpeg_mode, convert_ycbcr=True)
+
+	# todo delete
+	# print("[%d,%d-%d,%d,%s]" % (x, y, x + patch_width, y + patch_height,
+	#                             filename))
+
+	return image

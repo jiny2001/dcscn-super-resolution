@@ -49,6 +49,7 @@ flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 10, "")
 flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
+flags.DEFINE_integer("data_num", 2000, "Number of training on each epoch")
 
 # Dataset or Others
 flags.DEFINE_string("test_dataset", "set5", "Directory for test dataset used during training [set5, set14, bsd100, urban100]")

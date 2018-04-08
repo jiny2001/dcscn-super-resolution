@@ -59,6 +59,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		# Dataset or Others
 		self.dataset = flags.dataset
 		self.test_dataset = flags.test_dataset
+		self.data_num = max(1,(flags.data_num // flags.batch_num)) * flags.batch_num
 
 		# Image Processing Parameters
 		self.scale = flags.scale
@@ -135,6 +136,24 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		return name
 
+	def open_datasets(self, target, data_dir, batch_image_size, stride_size=0):
+
+		# todo stride_size may not be used?
+		if stride_size == 0:
+			stride_size = batch_image_size // 2
+
+		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
+		                           jpeg_mode=self.jpeg_mode)
+
+		datasets.data_dir = data_dir
+		datasets.true_filenames = util.get_files_in_directory(data_dir)
+		datasets.input.count = len(datasets.true_filenames)
+
+		if target == "training":
+			self.train = datasets
+		else:
+			self.test = datasets
+
 	def load_datasets(self, target, data_dir, batch_dir, batch_image_size, stride_size=0):
 
 		batch_dir += "/scale%d" % self.scale
@@ -187,21 +206,28 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 	def build_input_batch(self, batch_dir):
 
-		# adjust input batch length
-		if self.index_in_epoch + self.batch_num > self.train.input.count:
-			length = self.train.input.count - self.index_in_epoch
-			self.batch_input = length * [None]
-			self.batch_input_quad = length * [None]
-			self.batch_true_quad = length * [None]
-		else:
-			length = self.batch_num
+		for i in range(self.batch_num):
+			image_no = random.randrange(self.train.input.count)
+			image = loader.load_random_patch(self.train.true_filenames[image_no], self.batch_image_size * self.scale,
+			                                 self.batch_image_size * self.scale, self.jpeg_mode)
 
-		for i in range(length):
-			image_no = self.batch_index[self.index_in_epoch]
-			self.batch_input[i] = loader.load_input_batch_image(batch_dir, image_no)
-			self.batch_input_quad[i] = loader.load_interpolated_batch_image(batch_dir, image_no)
-			self.batch_true_quad[i] = loader.load_true_batch_image(batch_dir, image_no)
+			while image is None:
+				image_no = random.randrange(self.train.input.count)
+				image = loader.load_random_patch(self.train.true_filenames[image_no], self.batch_image_size * self.scale,
+				                                 self.batch_image_size * self.scale, self.jpeg_mode)
+
+			if random.randrange(2) == 0:
+				image = np.fliplr(image)
+
+			# util.save_image("output/%d_input.png" % i, util.resize_image_by_pil(true_image, 1 / self.scale))
+			# util.save_image("output/%d_true.png" % i, true_image)
+
+			# todo add scaling function
+			self.batch_input[i] = util.resize_image_by_pil(image, 1 / self.scale)
+			self.batch_input_quad[i] = util.resize_image_by_pil(self.batch_input[i], self.scale)
+			self.batch_true_quad[i] = image
 			self.index_in_epoch += 1
+
 
 	def build_graph(self):
 
@@ -345,7 +371,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		return training_optimizer
 
 	def train_batch(self):
-
+		# todo rename quad
 		feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_quad, self.y: self.batch_true_quad,
 		             self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
 
@@ -430,7 +456,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			processing_time = (time.time() - self.start_time) / self.step
 			line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
 				util.get_now_date(), "{:,}".format(self.step), mse, psnr, self.training_psnr_sum / self.training_step)
-			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (self.train.input.count // self.batch_num)
+			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (self.data_num // self.batch_num)
 			h = estimated // (60 * 60)
 			estimated -= h * 60 *60
 			m = estimated // 60

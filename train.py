@@ -25,7 +25,7 @@ def main(not_parsed_args):
 
 	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 
-	model.load_datasets("training", FLAGS.data_dir + "/" + FLAGS.dataset, FLAGS.batch_dir + "/" + FLAGS.dataset,
+	model.open_datasets("training", FLAGS.data_dir + "/" + FLAGS.dataset,
 	                    FLAGS.batch_image_size, FLAGS.stride_size)
 	model.load_datasets("test", FLAGS.data_dir + "/" + FLAGS.test_dataset, FLAGS.batch_dir + "/" + FLAGS.test_dataset,
 	                    FLAGS.batch_image_size, FLAGS.stride_size)
@@ -79,7 +79,9 @@ def train(model, flags, trial, load_model_name=""):
 		model.build_input_batch(flags.batch_dir + "/" + flags.dataset + "/scale%d" % flags.scale)
 		model.train_batch()
 
-		if model.index_in_epoch >= model.train.input.count:
+		#todo rename data_num index_in_epoch
+#		if model.index_in_epoch >= (model.data_num // model.batch_num):
+		if model.index_in_epoch >= model.data_num:
 			model.epochs_completed += 1
 			mse = model.evaluate_test_batch(save_meta_data, trial)
 			save_meta_data = model.update_epoch_and_lr(mse)
