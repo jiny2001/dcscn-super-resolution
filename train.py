@@ -72,11 +72,6 @@ def train(model, flags, trial, load_model_name=""):
 
 	model.init_train_step()
 	model.init_epoch_index()
-	mse = model.evaluate_test_batch(log_profile=False)
-	model.lr_updated_lr.append(model.lr)
-	model.lr_updated_epoch.append(0)
-	model.lr_updated_psnr.append(util.get_psnr(mse))
-	model.print_status(mse)
 	save_meta_data = True
 
 	while model.lr > flags.end_lr:
@@ -93,13 +88,6 @@ def train(model, flags, trial, load_model_name=""):
 
 	model.end_train_step()
 	model.save_model(trial=trial, output_log=True)
-
-	#todo delete
-	model.report_updated_history()
-
-	#todo delete
-	if flags.debug:
-		model.print_weight_variables()
 
 	if FLAGS.evaluate_dataset == "":
 		mse = model.evaluate_test_batch()

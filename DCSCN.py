@@ -72,6 +72,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		# initialize variables
 		self.name = self.get_model_name(model_name)
+		self.total_epochs = 0
+		lr = self.initial_lr
+		while lr > flags.end_lr:
+			self.total_epochs += self.lr_decay_epoch
+			lr *= self.lr_decay
 
 		# initialize environment
 		util.make_dir(self.checkpoint_dir)
@@ -403,21 +408,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		return mse
 
 	def update_epoch_and_lr(self, mse):
-		lr_updated = False
 
 		self.epochs_completed_in_stage += 1
 
-		if self.epochs_completed_in_stage > self.lr_decay_epoch:
+		if self.epochs_completed_in_stage >= self.lr_decay_epoch:
+
 			# set new learning rate
-			self.lr_updated_lr.append(self.lr)
-			self.lr_updated_epoch.append(self.epochs_completed)
-			self.lr_updated_psnr.append(util.get_psnr(mse))
-
 			self.lr *= self.lr_decay
-			lr_updated = True
 			self.epochs_completed_in_stage = 0
-
-		return lr_updated
+			return True
+		else:
+			return False
 
 	def print_status(self, mse, log=False):
 
@@ -429,7 +430,13 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			processing_time = (time.time() - self.start_time) / self.step
 			line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
 				util.get_now_date(), "{:,}".format(self.step), mse, psnr, self.training_psnr_sum / self.training_step)
-			line_b = "Epoch:%d LR:%f (%2.3fsec/step)" % ( self.epochs_completed, self.lr, processing_time)
+			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (self.train.input.count // self.batch_num)
+			h = estimated // (60 * 60)
+			estimated -= h * 60 *60
+			m = estimated // 60
+			s = estimated - m * 60
+			line_b = "Epoch:%d LR:%f (%2.3fsec/step) Estimated:%d:%d:%d" % ( self.epochs_completed, self.lr, processing_time,
+			                                                                 h, m , s)
 			if log:
 				logging.info(line_a)
 				logging.info(line_b)
@@ -575,10 +582,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.min_validation_epoch = -1
 		self.step = 0
 
-		self.lr_updated_lr = []
-		self.lr_updated_epoch = []
-		self.lr_updated_psnr = []
-
 		self.start_time = time.time()
 
 	def end_train_step(self):
@@ -620,17 +623,3 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		#   tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
 		self.first_training = False
 
-	def report_updated_history(self):
-
-		updated_history = ''
-		for i in range(len(self.lr_updated_lr)):
-			updated_history += "LR:%f E:%d PSNR:%f, " % (
-				self.lr_updated_lr[i], self.lr_updated_epoch[i], self.lr_updated_psnr[i])
-		logging.info(updated_history)
-
-		updated_history = 'Efforts:'
-		for i in range(len(self.lr_updated_lr) - 1):
-			updated_history += "(%f, E:%d [%f]), " % (
-				self.lr_updated_lr[i], self.lr_updated_epoch[i + 1] - self.lr_updated_epoch[i],
-				self.lr_updated_psnr[i + 1] - self.lr_updated_psnr[i])
-		logging.info(updated_history)
