@@ -75,6 +75,6 @@ flags.DEFINE_integer("save_images_num", 10, "Number of CNN images saved")
 
 
 def get():
-	print("Python Interpreter version:%s" % sys.version[:3])
-	print("tensorflow version:%s" % tf.__version__)
-	return FLAGS
+    print("Python Interpreter version:%s" % sys.version[:3])
+    print("tensorflow version:%s" % tf.__version__)
+    return FLAGS
