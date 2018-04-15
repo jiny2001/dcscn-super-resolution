@@ -25,10 +25,11 @@ def main(not_parsed_args):
 
 	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 
-	model.open_datasets("training", FLAGS.data_dir + "/" + FLAGS.dataset,
-	                    FLAGS.batch_image_size, FLAGS.stride_size)
-	model.load_datasets("test", FLAGS.data_dir + "/" + FLAGS.test_dataset, FLAGS.batch_dir + "/" + FLAGS.test_dataset,
-	                    FLAGS.batch_image_size, FLAGS.stride_size)
+	model.train = model.load_dynamic_datasets(FLAGS.data_dir + "/" + FLAGS.dataset,
+	                                          FLAGS.batch_image_size, FLAGS.stride_size)
+	model.test = model.load_datasets(FLAGS.data_dir + "/" + FLAGS.test_dataset,
+	                                 FLAGS.batch_dir + "/" + FLAGS.test_dataset,
+	                                 FLAGS.batch_image_size, FLAGS.stride_size)
 
 	model.build_graph()
 	model.build_optimizer()
@@ -65,7 +66,6 @@ def main(not_parsed_args):
 
 
 def train(model, flags, trial, load_model_name=""):
-
 	model.init_all_variables()
 	if load_model_name != "":
 		model.load_model(load_model_name, output_log=True)
@@ -76,15 +76,13 @@ def train(model, flags, trial, load_model_name=""):
 
 	while model.lr > flags.end_lr:
 
-		model.build_input_batch(flags.batch_dir + "/" + flags.dataset + "/scale%d" % flags.scale)
+		model.build_input_batch()
 		model.train_batch()
 
-		#todo rename data_num index_in_epoch
-#		if model.index_in_epoch >= (model.data_num // model.batch_num):
-		if model.index_in_epoch >= model.data_num:
+		if model.steps_in_epoch >= model.training_image_count:
 			model.epochs_completed += 1
 			mse = model.evaluate_test_batch(save_meta_data, trial)
-			save_meta_data = model.update_epoch_and_lr(mse)
+			save_meta_data = model.update_epoch_and_lr()
 			model.print_status(mse)
 			model.init_epoch_index()
 

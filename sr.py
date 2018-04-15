@@ -13,7 +13,6 @@ import DCSCN
 from helper import args
 
 args.flags.DEFINE_string("file", "image.jpg", "Target filename")
-
 FLAGS = args.get()
 
 

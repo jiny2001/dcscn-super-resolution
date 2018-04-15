@@ -6,6 +6,7 @@ functions for loading/converting data
 """
 
 import configparser
+import logging
 import os
 import random
 import numpy as np
@@ -73,8 +74,10 @@ def save_input_batch_image(batch_dir, image_number, image):
 def save_interpolated_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
 
+
 def save_true_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
+
 
 def get_batch_count(batch_dir):
 	if not os.path.isdir(batch_dir):
@@ -103,7 +106,7 @@ class DataSet:
 
 		self.count = 0
 		self.images = None
-		self.quad_images = None
+		self.hr_images = None
 
 	def release_images(self):
 
@@ -111,9 +114,9 @@ class DataSet:
 			del self.images
 		self.images = None
 
-		if hasattr(self, 'quad_images'):
-			del self.quad_images
-		self.quad_images = None
+		if hasattr(self, 'hr_images'):
+			del self.hr_images
+		self.hr_images = None
 
 	def load_test_image(self, filename):
 
@@ -158,15 +161,16 @@ class DataSet:
 			self.images = np.zeros(shape=[count, self.batch_image_size, self.batch_image_size, 1])  # type: np.ndarray
 		else:
 			self.images = None
-		self.quad_images = np.zeros(
-			shape=[count, self.batch_image_size * self.scale, self.batch_image_size * self.scale, 1])  # type: np.ndarray
+		self.hr_images = np.zeros(
+			shape=[count, self.batch_image_size * self.scale, self.batch_image_size * self.scale,
+			       1])  # type: np.ndarray
 
 		for i in range(count):
 			if is_input:
 				self.images[i] = load_input_batch_image(batch_dir, i)
-				self.quad_images[i] = load_interpolated_batch_image(batch_dir, i)
+				self.hr_images[i] = load_interpolated_batch_image(batch_dir, i)
 			else:
-				self.quad_images[i] = load_true_batch_image(batch_dir, i)
+				self.hr_images[i] = load_true_batch_image(batch_dir, i)
 
 			if i % 1000 == 0:
 				print('.', end='', flush=True)
@@ -180,7 +184,10 @@ class DataSets:
 
 		self.scale = scale
 		self.batch_image_size = batch_image_size
-		self.stride = stride_size
+		if stride_size == 0:
+			self.stride = batch_image_size // 2
+		else:
+			self.stride = stride_size
 		self.channels = channels
 		self.jpeg_mode = jpeg_mode
 		self.max_value = max_value
@@ -191,6 +198,9 @@ class DataSets:
 		self.true = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, jpeg_mode=jpeg_mode,
 		                    max_value=max_value)
 
+		self.filenames = []
+		self.file_counts = 0
+
 	def alloc_images(self, image_count):
 
 		self.input.release_images()
@@ -198,13 +208,13 @@ class DataSets:
 
 		self.input.images = np.zeros(
 			shape=[image_count, self.batch_image_size, self.batch_image_size, 1])  # type: np.ndarray
-		self.input.quad_images = np.zeros(
+		self.input.hr_images = np.zeros(
 			shape=[image_count, self.batch_image_size * self.scale, self.batch_image_size * self.scale,
 			       1])  # type: np.ndarray
 		self.input.count = image_count
 
 		self.true.images = None
-		self.true.quad_images = np.zeros(
+		self.true.hr_images = np.zeros(
 			shape=[image_count, self.batch_image_size * self.scale, self.batch_image_size * self.scale,
 			       1])  # type: np.ndarray
 		self.true.count = image_count
@@ -283,9 +293,9 @@ class DataSets:
 
 	def load_batch_image(self, batch_dir, index, image_number):
 		self.input.images[index] = load_input_batch_image(batch_dir, image_number)
-		self.input.quad_images[index] = load_interpolated_batch_image(batch_dir, image_number)
+		self.input.hr_images[index] = load_interpolated_batch_image(batch_dir, image_number)
 
-		self.true.quad_images[index] = load_true_batch_image(batch_dir, image_number)
+		self.true.hr_images[index] = load_true_batch_image(batch_dir, image_number)
 
 	def is_batch_exist(self, batch_dir):
 		if not os.path.isdir(batch_dir):
@@ -317,6 +327,12 @@ class DataSets:
 		except IOError:
 			return False
 
+	def set_data_dir(self, data_dir):
+		self.filenames = util.get_files_in_directory(data_dir)
+		self.file_counts = len(self.filenames)
+		if self.file_counts <= 0:
+			logging.error("Data Directory is empty.")
+
 
 def load_random_patch(filename, patch_width, patch_height, jpeg_mode):
 	image = util.load_image(filename, print_console=False)
@@ -329,9 +345,5 @@ def load_random_patch(filename, patch_width, patch_height, jpeg_mode):
 	x = random.randrange(width - patch_width)
 	image = image[y:y + patch_height, x:x + patch_width, :]
 	image = build_input_image(image, jpeg_mode=jpeg_mode, convert_ycbcr=True)
-
-	# todo delete
-	# print("[%d,%d-%d,%d,%s]" % (x, y, x + patch_width, y + patch_height,
-	#                             filename))
 
 	return image

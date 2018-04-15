@@ -197,7 +197,8 @@ def convert_ycbcr_to_rgb(ycbcr_image, jpeg_mode=True, max_value=255.0):
 		rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - (128.0 * max_value / 256.0)
 		xform = np.array(
 			[[max_value / 219.0, 0, max_value * 0.701 / 112.0],
-			 [max_value / 219, - max_value * 0.886 * 0.114 / (112 * 0.587), - max_value * 0.701 * 0.299 / (112 * 0.587)],
+			 [max_value / 219, - max_value * 0.886 * 0.114 / (112 * 0.587),
+			  - max_value * 0.701 * 0.299 / (112 * 0.587)],
 			 [max_value / 219.0, max_value * 0.886 / 112.0, 0]])
 		rgb_image = rgb_image.dot(xform.T)
 
@@ -473,14 +474,18 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 
 	return loss_image
 
+
 def trim_image_as_file(image):
 
-	if image.dtype != np.uint8:
-		image = image.astype(np.uint8)
-	return np.clip(image.astype(np.double), 0, 255)
+	image = np.round(image)
+	return np.clip(image, 0, 255)
 
 
 def compute_mse(image1, image2, border_size=0):
+	"""
+	Computes MSE from 2 images.
+	We round it and clip to 0 - 255. Then shave it from 6 + scale.
+	"""
 	if len(image1.shape) == 2:
 		image1 = image1.reshape(image1.shape[0], image1.shape[1], 1)
 	if len(image2.shape) == 2:
@@ -492,15 +497,12 @@ def compute_mse(image1, image2, border_size=0):
 	image1 = trim_image_as_file(image1)
 	image2 = trim_image_as_file(image2)
 
-	mse = 0.0
-	for i in range(border_size, image1.shape[0] - border_size):
-		for j in range(border_size, image1.shape[1] - border_size):
-			for k in range(image1.shape[2]):
-				error = image1[i, j, k] - image2[i, j, k]
-				mse += error * error
+	shave = 6 + border_size
+	diff = np.subtract(image1, image2)
+	diff = diff[border_size:-border_size, border_size:-border_size, :]
+	mse = np.mean(np.square(diff))
 
-	return mse / ((image1.shape[0] - 2 * border_size) * (image1.shape[1] - 2 * border_size) * image1.shape[2])
-
+	return mse
 
 def print_filter_weights(tensor):
 	print("Tensor[%s] shape=%s" % (tensor.name, str(tensor.get_shape())))

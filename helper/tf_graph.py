@@ -99,7 +99,7 @@ class TensorflowGraph:
 
 	def conv2d(self, input_tensor, w, stride, bias=None, use_batch_norm=False, name=""):
 
-		output = tf.nn.conv2d(input_tensor, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
+		output = tf.nn.conv2d(input_tensor, w, strides=[1, stride, stride, 1], padding="SAME", name=name + "_conv")
 		self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
 
 		if bias is not None:

@@ -59,7 +59,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		# Dataset or Others
 		self.dataset = flags.dataset
 		self.test_dataset = flags.test_dataset
-		self.data_num = max(1,(flags.data_num // flags.batch_num)) * flags.batch_num
+		self.training_image_count = max(1, (flags.training_images // flags.batch_num)) * flags.batch_num
+		self.train = None
+		self.test = None
 
 		# Image Processing Parameters
 		self.scale = flags.scale
@@ -136,32 +138,31 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		return name
 
-	def open_datasets(self, target, data_dir, batch_image_size, stride_size=0):
-
-		# todo stride_size may not be used?
-		if stride_size == 0:
-			stride_size = batch_image_size // 2
+	def load_dynamic_datasets(self, data_dir, batch_image_size, stride_size=0):
+		""" loads datasets
+		Opens image directory as a datasets. Images will be loaded when build_input_batch() is called.
+		"""
 
 		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           jpeg_mode=self.jpeg_mode)
+		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
+		                           resampling_method=self.resampling_method)
 
-		datasets.data_dir = data_dir
-		datasets.true_filenames = util.get_files_in_directory(data_dir)
-		datasets.input.count = len(datasets.true_filenames)
+		datasets.set_data_dir(data_dir)
 
-		if target == "training":
-			self.train = datasets
-		else:
-			self.test = datasets
+		return datasets
 
-	def load_datasets(self, target, data_dir, batch_dir, batch_image_size, stride_size=0):
+	def load_datasets(self, data_dir, batch_dir, batch_image_size, stride_size=0):
+		""" build input patch images and loads as a datasets
+		Opens image directory as a datasets.
+		Each images are splitted into patch images and converted to input image. Since loading
+		(especially from PNG/JPG) and building input-LR images needs much computation in the
+		training phase, building pre-processed images makes training much faster. However, images
+		are limited by divided grids.
+		"""
 
 		batch_dir += "/scale%d" % self.scale
-		print("Loading datasets for [%s]..." % target)
+		print("Loading datasets for [%s]..." % batch_dir)
 		util.make_dir(batch_dir)
-
-		if stride_size == 0:
-			stride_size = batch_image_size // 2
 
 		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
 		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
@@ -169,13 +170,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		if not datasets.is_batch_exist(batch_dir):
 			datasets.build_batch(data_dir, batch_dir)
+		datasets.load_batch(batch_dir)
 
-		if target == "training":
-			datasets.load_batch_image_count(batch_dir)
-			self.train = datasets
-		else:
-			datasets.load_batch(batch_dir)
-			self.test = datasets
+		return datasets
 
 	def build_training_datasets(self, data_dir, batch_dir, batch_image_size, stride_size=0):
 
@@ -195,39 +192,32 @@ class SuperResolution(tf_graph.TensorflowGraph):
 	def init_epoch_index(self):
 
 		self.batch_input = self.batch_num * [None]
-		self.batch_input_quad = self.batch_num * [None]
-		self.batch_true_quad = self.batch_num * [None]
+		self.batch_input_bicubic = self.batch_num * [None]
+		self.batch_true = self.batch_num * [None]
 
 		self.batch_index = random.sample(range(0, self.train.input.count), self.train.input.count)
-		self.index_in_epoch = 0
+		self.steps_in_epoch = 0
 		self.training_psnr_sum = 0
 		self.training_mse_sum = 0
 		self.training_step = 0
 
-	def build_input_batch(self, batch_dir):
+	def build_input_batch(self):
 
 		for i in range(self.batch_num):
-			image_no = random.randrange(self.train.input.count)
-			image = loader.load_random_patch(self.train.true_filenames[image_no], self.batch_image_size * self.scale,
-			                                 self.batch_image_size * self.scale, self.jpeg_mode)
-
+			image = None
 			while image is None:
-				image_no = random.randrange(self.train.input.count)
-				image = loader.load_random_patch(self.train.true_filenames[image_no], self.batch_image_size * self.scale,
+				image_no = random.randrange(self.train.file_counts)
+				image = loader.load_random_patch(self.train.filenames[image_no],
+				                                 self.batch_image_size * self.scale,
 				                                 self.batch_image_size * self.scale, self.jpeg_mode)
 
 			if random.randrange(2) == 0:
 				image = np.fliplr(image)
 
-			# util.save_image("output/%d_input.png" % i, util.resize_image_by_pil(true_image, 1 / self.scale))
-			# util.save_image("output/%d_true.png" % i, true_image)
-
-			# todo add scaling function
 			self.batch_input[i] = util.resize_image_by_pil(image, 1 / self.scale)
-			self.batch_input_quad[i] = util.resize_image_by_pil(self.batch_input[i], self.scale)
-			self.batch_true_quad[i] = image
-			self.index_in_epoch += 1
-
+			self.batch_input_bicubic[i] = util.resize_image_by_pil(self.batch_input[i], self.scale)
+			self.batch_true[i] = image
+			self.steps_in_epoch += 1
 
 	def build_graph(self):
 
@@ -294,7 +284,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
 			input_channels = self.reconstruct_filters
 
-		self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels, self.output_channels)
+		self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
+		                self.output_channels)
 
 		self.y_ = self.H[-1] + self.x2
 
@@ -302,9 +293,15 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			self.features, "{:,}".format(self.complexity), self.receptive_fields))
 
 	def build_optimizer(self):
+		"""
+		Build loss function. We use 6+scale as a border	and we don't calculate MSE on the border.
+		"""
 
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 		diff = self.y_ - self.y
+		border = 6 + self.scale
+		diff = tf.image.crop_to_bounding_box(diff, border, self.batch_image_size - 2 * border, border,
+		                                     self.batch_image_size - 2 * border)
 
 		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
 		loss = self.mse
@@ -371,8 +368,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		return training_optimizer
 
 	def train_batch(self):
-		# todo rename quad
-		feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_quad, self.y: self.batch_true_quad,
+
+		feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_bicubic, self.y: self.batch_true,
 		             self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
 
 		_, mse = self.sess.run([self.training_optimizer, self.mse], feed_dict=feed_dict)
@@ -386,8 +383,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		save_meta_data = save_meta_data and self.save_meta_data and (trial == 0)
 		feed_dict = {self.x: self.test.input.images,
-		             self.x2: self.test.input.quad_images,
-		             self.y: self.test.true.quad_images,
+		             self.x2: self.test.input.hr_images,
+		             self.y: self.test.true.hr_images,
 		             self.dropout: 1.0,
 		             self.is_training: 0}
 
@@ -433,7 +430,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		return mse
 
-	def update_epoch_and_lr(self, mse):
+	def update_epoch_and_lr(self):
 
 		self.epochs_completed_in_stage += 1
 
@@ -456,13 +453,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			processing_time = (time.time() - self.start_time) / self.step
 			line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
 				util.get_now_date(), "{:,}".format(self.step), mse, psnr, self.training_psnr_sum / self.training_step)
-			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (self.data_num // self.batch_num)
+			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (
+				self.training_image_count // self.batch_num)
 			h = estimated // (60 * 60)
-			estimated -= h * 60 *60
+			estimated -= h * 60 * 60
 			m = estimated // 60
 			s = estimated - m * 60
-			line_b = "Epoch:%d LR:%f (%2.3fsec/step) Estimated:%d:%d:%d" % ( self.epochs_completed, self.lr, processing_time,
-			                                                                 h, m , s)
+			line_b = "Epoch:%d LR:%f (%2.3fsec/step) Estimated:%d:%d:%d" % (
+				self.epochs_completed, self.lr, processing_time, h, m, s)
 			if log:
 				logging.info(line_a)
 				logging.info(line_b)
@@ -507,16 +505,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			output /= self.self_ensemble
 		else:
 			y = self.sess.run(self.y_, feed_dict={self.x: input_image.reshape(1, h, w, ch),
-			                                      self.x2: bicubic_input_image.reshape(1, self.scale * h, self.scale * w, ch),
+			                                      self.x2: bicubic_input_image.reshape(1, self.scale * h,
+			                                                                           self.scale * w, ch),
 			                                      self.dropout: 1.0, self.is_training: 0})
 			output = y[0]
 
 		if self.max_value != 255.0:
-			quad_image = np.multiply(output, 255.0 / self.max_value)
+			hr_image = np.multiply(output, 255.0 / self.max_value)
 		else:
-			quad_image = output
+			hr_image = output
 
-		return quad_image
+		return hr_image
 
 	def do_for_file(self, file_path, output_folder="output"):
 
@@ -535,7 +534,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(
 				util.resize_image_by_pil(org_image, self.scale, self.resampling_method),
 				jpeg_mode=self.jpeg_mode)
-			image = util.convert_y_and_cbcr_to_rgb(output_y_image, scaled_ycbcr_image[:, :, 1:3], jpeg_mode=self.jpeg_mode)
+			image = util.convert_y_and_cbcr_to_rgb(output_y_image, scaled_ycbcr_image[:, :, 1:3],
+			                                       jpeg_mode=self.jpeg_mode)
 		else:
 			scaled_image = util.resize_image_by_pil(org_image, self.scale, resampling_method=self.resampling_method)
 			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
@@ -561,7 +561,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 				true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image, jpeg_mode=self.jpeg_mode)
 
 				output_y_image = self.do(input_y_image, input_bicubic_y_image)
-				mse = util.compute_mse(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=self.scale)
+				mse = util.compute_mse(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=6 + self.scale)
 				loss_image = util.get_loss_image(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=self.scale)
 
 				output_color_image = util.convert_y_and_cbcr_to_rgb(output_y_image, true_ycbcr_image[:, :, 1:3],
@@ -579,16 +579,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
 				input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
 				                                                 resampling_method=self.resampling_method)
 				output_y_image = self.do(input_y_image, input_bicubic_y_image)
-				mse = util.compute_mse(true_y_image, output_y_image, border_size=self.scale)
+				mse = util.compute_mse(true_y_image, output_y_image, border_size=6 + self.scale)
 
 		elif true_image.shape[2] == 1 and self.channels == 1:
 
 			# for monochrome images
-			input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale, alignment=self.scale)
+			input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
+			                                       alignment=self.scale)
 			input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
 			                                                 resampling_method=self.resampling_method)
 			output_image = self.do(input_image, input_bicubic_y_image)
-			mse = util.compute_mse(true_image, output_image, border_size=self.scale)
+			mse = util.compute_mse(true_image, output_image, border_size=6 + self.scale)
 			if output:
 				util.save_image(output_directory + file_path, true_image)
 				util.save_image(output_directory + filename + "_result" + extension, output_image)
@@ -637,8 +638,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 
 		_, mse = self.sess.run([self.optimizer, self.mse], feed_dict={self.x: self.batch_input,
-		                                                              self.x2: self.batch_input_quad,
-		                                                              self.y: self.batch_true_quad,
+		                                                              self.x2: self.batch_input_bicubic,
+		                                                              self.y: self.batch_true,
 		                                                              self.lr_input: self.lr,
 		                                                              self.dropout: self.dropout_rate},
 		                       options=run_options, run_metadata=run_metadata)
@@ -648,4 +649,3 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		#   run_meta=run_metadata,
 		#   tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
 		self.first_training = False
-

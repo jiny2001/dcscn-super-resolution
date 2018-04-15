@@ -6,6 +6,7 @@ functions for sharing arguments and their default values
 """
 
 import sys
+
 import numpy as np
 import tensorflow as tf
 
@@ -29,7 +30,7 @@ flags.DEFINE_float("filters_decay_gamma", 1.5, "Gamma")
 flags.DEFINE_boolean("batch_norm", False, "batch normalization")
 flags.DEFINE_boolean("pixel_shuffler", False, "Use Pixel Shuffler insted of using transposed CNN")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
-
+flags.DEFINE_float("clipping_norm", 5, "Norm for gradient clipping")
 
 # Training
 flags.DEFINE_string("initializer", "he", "Initializer for weights can be [uniform, stddev, xavier, he, identity, zero]")
@@ -42,17 +43,17 @@ flags.DEFINE_float("momentum", 0.9, "Momentum for momentum optimizer and rmsprop
 flags.DEFINE_integer("batch_num", 20, "Number of mini-batch images for training")
 flags.DEFINE_integer("batch_image_size", 32, "Image size for mini-batch")
 flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, use half of batch_image_size")
-flags.DEFINE_float("clipping_norm", 5, "Norm for gradient clipping")
 
 # Learning Rate Control for Training
 flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 10, "")
 flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
-flags.DEFINE_integer("data_num", 2000, "Number of training on each epoch")
+flags.DEFINE_integer("training_images", 20000, "Number of training on each epoch")
 
 # Dataset or Others
-flags.DEFINE_string("test_dataset", "set5", "Directory for test dataset used during training [set5, set14, bsd100, urban100]")
+flags.DEFINE_string("test_dataset", "set5",
+                    "Directory for test dataset used during training [set5, set14, bsd100, urban100]")
 flags.DEFINE_string("evaluate_dataset", "all", "Directory for evaluate dataset [set5, set14, bsd100, urban100, all]")
 flags.DEFINE_string("dataset", "yang91", "Training dataset dir. [yang91, general100, bsd200]")
 flags.DEFINE_integer("tests", 1, "Number of training tests")
