@@ -112,3 +112,5 @@ ENV/
 \.idea/
 
 log\.txt
+
+tf_log_archive/
