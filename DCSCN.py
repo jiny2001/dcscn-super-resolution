@@ -330,7 +330,7 @@ class SuperResolution:
             features, "{:,}".format(self.complexity), self.receptive_fields))
 
     def conv2d(self, x, w, stride, bias=None, activator=None, leaky_relu_alpha=0.1, name=""):
-        conv = tf.nn.conv2d(x, w, strides=[stride, stride, 1, 1], padding="SAME", name=name + "_conv")
+        conv = tf.nn.conv2d(x, w, strides=[1, stride, stride, 1], padding="SAME", name=name + "_conv")
 
         self.complexity += int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
 
