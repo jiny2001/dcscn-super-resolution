@@ -497,9 +497,9 @@ def compute_mse(image1, image2, border_size=0):
 	image1 = trim_image_as_file(image1)
 	image2 = trim_image_as_file(image2)
 
-	shave = 6 + border_size
 	diff = np.subtract(image1, image2)
-	diff = diff[border_size:-border_size, border_size:-border_size, :]
+	if border_size > 0:
+		diff = diff[border_size:-border_size, border_size:-border_size, :]
 	mse = np.mean(np.square(diff))
 
 	return mse
