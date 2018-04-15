@@ -1,3 +1,13 @@
+# Now updated to ver2!
+
+Now we have these features in my model/training experiments. Will upload new perfromance/model/readme soon later.
+
+* Pixel Shuffler or Transposed CNN upsampling layer
+* Self Ensemble
+* Clipping Normalization
+* Dynamicly load training images
+* Fatser evaluation/computation
+
 # Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network
 
 by [Jin Yamanaka](https://github.com/jiny2001), Shigesumi Kuwashima and [Takio Kurita](http://home.hiroshima-u.ac.jp/tkurita/profile-e.html)
