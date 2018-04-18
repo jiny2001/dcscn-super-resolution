@@ -75,7 +75,7 @@ def train(model, flags, trial, load_model_name=""):
 			# training epoch finished
 			model.epochs_completed += 1
 			mse, psnr = model.evaluate(test_filenames)
-			model.print_status(mse, log=model_updated)
+			model.print_status(mse, psnr, log=model_updated)
 			model.log_to_tensorboard(test_filenames[0], psnr, save_meta_data=model_updated)
 
 			model_updated = model.update_epoch_and_lr()

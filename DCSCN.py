@@ -297,7 +297,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			if self.psnr_calc_border_size > 0:
 				offset = self.psnr_calc_border_size
 				size = self.batch_image_size * self.scale - 2 * self.psnr_calc_border_size
-				diff = tf.image.crop_to_bounding_box(diff, offset, offset, size, size)
+#				diff = tf.image.crop_to_bounding_box(diff, offset, offset, size, size)
 
 		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
 		loss = self.mse
@@ -495,9 +495,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		else:
 			return False
 
-	def print_status(self, mse, log=False):
-
-		psnr = util.get_psnr(mse, max_value=self.max_value)
+	def print_status(self, mse, psnr, log=False):
 
 		if self.step == 0:
 			logging.info("Initial MSE:%f PSNR:%f" % (mse, psnr))
