@@ -18,13 +18,12 @@ INTERPOLATED_IMAGE_DIR = "interpolated"
 TRUE_IMAGE_DIR = "true"
 
 
-def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True,
-                     jpeg_mode=False, print_console=True):
+def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True, print_console=True):
 	image = util.load_image(filename, print_console=print_console)
-	return build_input_image(image, width, height, channels, scale, alignment, convert_ycbcr, jpeg_mode)
+	return build_input_image(image, width, height, channels, scale, alignment, convert_ycbcr)
 
 
-def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True, jpeg_mode=False):
+def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True):
 	"""
 	build input image from file.
 	crop, adjust the image alignment for the scale factor, resize, convert color space.
@@ -47,10 +46,10 @@ def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0
 
 	if channels == 1 and image.shape[2] == 3:
 		if convert_ycbcr:
-			image = util.convert_rgb_to_y(image, jpeg_mode=jpeg_mode)
+			image = util.convert_rgb_to_y(image)
 	else:
 		if convert_ycbcr:
-			image = util.convert_rgb_to_ycbcr(image, jpeg_mode=jpeg_mode)
+			image = util.convert_rgb_to_ycbcr(image)
 
 	return image
 
@@ -94,7 +93,7 @@ def get_batch_count(batch_dir):
 
 
 class DataSet:
-	def __init__(self, batch_image_size, channels=1, scale=1, max_value=255.0, alignment=0, jpeg_mode=False):
+	def __init__(self, batch_image_size, channels=1, scale=1, max_value=255.0, alignment=0):
 
 		self.batch_image_size = batch_image_size
 		self.max_value = max_value
@@ -102,7 +101,6 @@ class DataSet:
 		self.scale = scale
 		self.max_value = max_value
 		self.alignment = alignment
-		self.jpeg_mode = jpeg_mode
 
 		self.count = 0
 		self.images = None
@@ -121,7 +119,7 @@ class DataSet:
 	def load_test_image(self, filename):
 
 		image = load_input_image(filename, channels=self.channels, scale=1, alignment=self.alignment,
-		                         jpeg_mode=self.jpeg_mode, print_console=False)
+		                         print_console=False)
 		if self.max_value != 255.0:
 			image = np.multiply(image, self.max_value / 255.0)
 
@@ -130,7 +128,7 @@ class DataSet:
 	def load_input_image(self, filename, rescale=False, model=None, resampling_method="bicubic"):
 
 		image = load_input_image(filename, channels=self.channels, scale=self.scale, alignment=self.alignment,
-		                         jpeg_mode=self.jpeg_mode, print_console=True)
+		                         print_console=True)
 		if self.max_value != 255.0:
 			image = np.multiply(image, self.max_value / 255.0)
 
@@ -180,7 +178,7 @@ class DataSet:
 
 class DataSets:
 	def __init__(self, scale, batch_image_size, stride_size, channels=1,
-	             jpeg_mode=False, max_value=255.0, resampling_method="bicubic"):
+	             max_value=255.0, resampling_method="bicubic"):
 
 		self.scale = scale
 		self.batch_image_size = batch_image_size
@@ -189,14 +187,11 @@ class DataSets:
 		else:
 			self.stride = stride_size
 		self.channels = channels
-		self.jpeg_mode = jpeg_mode
 		self.max_value = max_value
 		self.resampling_method = resampling_method
 
-		self.input = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, jpeg_mode=jpeg_mode,
-		                     max_value=max_value)
-		self.true = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, jpeg_mode=jpeg_mode,
-		                    max_value=max_value)
+		self.input = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, max_value=max_value)
+		self.true = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, max_value=max_value)
 
 		self.filenames = []
 		self.file_counts = 0
@@ -265,7 +260,6 @@ class DataSets:
 		config.set("batch", "batch_image_size", str(self.batch_image_size))
 		config.set("batch", "stride", str(self.stride))
 		config.set("batch", "channels", str(self.channels))
-		config.set("batch", "jpeg_mode", str(self.jpeg_mode))
 		config.set("batch", "max_value", str(self.max_value))
 
 		with open(batch_dir + "/batch_images.ini", "w") as configfile:
@@ -317,8 +311,6 @@ class DataSets:
 				return False
 			if config.getint("batch", "channels") != self.channels:
 				return False
-			if config.getboolean("batch", "jpeg_mode") != self.jpeg_mode:
-				return False
 			if config.getfloat("batch", "max_value") != self.max_value:
 				return False
 
@@ -332,9 +324,9 @@ class DataSets:
 		self.file_counts = len(self.filenames)
 		if self.file_counts <= 0:
 			logging.error("Data Directory is empty.")
+			exit(-1)
 
-
-def load_random_patch(filename, patch_width, patch_height, jpeg_mode):
+def load_random_patch(filename, patch_width, patch_height):
 	image = util.load_image(filename, print_console=False)
 	height, width = image.shape[0:2]
 
@@ -344,6 +336,6 @@ def load_random_patch(filename, patch_width, patch_height, jpeg_mode):
 	y = random.randrange(height - patch_height)
 	x = random.randrange(width - patch_width)
 	image = image[y:y + patch_height, x:x + patch_width, :]
-	image = build_input_image(image, jpeg_mode=jpeg_mode, convert_ycbcr=True)
+	image = build_input_image(image, convert_ycbcr=True)
 
 	return image

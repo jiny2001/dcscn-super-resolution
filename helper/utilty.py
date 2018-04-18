@@ -138,37 +138,44 @@ def save_image_data(filename, image):
 	print("Saved [%s]" % filename)
 
 
-def convert_rgb_to_y(image, jpeg_mode=True, max_value=255.0):
+def convert_rgb_to_y(image):
 	if len(image.shape) <= 2 or image.shape[2] == 1:
 		return image
 
-	if jpeg_mode:
-		xform = np.array([[0.299, 0.587, 0.114]])
-		y_image = image.dot(xform.T)
-	else:
-		xform = np.array([[65.481 / 256.0, 128.553 / 256.0, 24.966 / 256.0]])
-		y_image = image.dot(xform.T) + (16.0 * max_value / 256.0)
+	xform = np.array([[65.738 / 256.0, 129.057 / 256.0, 25.064 / 256.0]])
+	y_image = image.dot(xform.T) + 16.0
 
 	return y_image
 
 
-def convert_rgb_to_ycbcr(image, jpeg_mode=True, max_value=255):
+def convert_rgb_to_ycbcr(image):
 	if len(image.shape) < 2 or image.shape[2] == 1:
 		return image
 
-	if jpeg_mode:
-		xform = np.array([[0.299, 0.587, 0.114], [-0.169, - 0.331, 0.500], [0.500, - 0.419, - 0.081]])
-		ycbcr_image = image.dot(xform.T)
-		ycbcr_image[:, :, [1, 2]] += max_value / 2
-	else:
-		xform = np.array(
-			[[65.481 / 256.0, 128.553 / 256.0, 24.966 / 256.0], [- 37.945 / 256.0, - 74.494 / 256.0, 112.439 / 256.0],
-			 [112.439 / 256.0, - 94.154 / 256.0, - 18.285 / 256.0]])
-		ycbcr_image = image.dot(xform.T)
-		ycbcr_image[:, :, 0] += (16.0 * max_value / 256.0)
-		ycbcr_image[:, :, [1, 2]] += (128.0 * max_value / 256.0)
+	xform = np.array(
+		[[65.738 / 256.0, 129.057 / 256.0, 25.064 / 256.0],
+		 [- 37.945 / 256.0, - 74.494 / 256.0, 112.439 / 256.0],
+		 [112.439 / 256.0, - 94.154 / 256.0, - 18.285 / 256.0]])
+
+	ycbcr_image = image.dot(xform.T)
+	ycbcr_image[:, :, 0] += 16.0
+	ycbcr_image[:, :, [1, 2]] += 128.0
 
 	return ycbcr_image
+
+
+def convert_ycbcr_to_rgb(ycbcr_image):
+	rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])  # type: np.ndarray
+
+	rgb_image[:, :, 0] = ycbcr_image[:, :, 0] - 16.0
+	rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - 128.0
+	xform = np.array(
+		[[298.082 / 256.0, 0, 408.583 / 256.0],
+		 [298.082 / 256.0, -100.291 / 256.0, -208.120 / 256.0],
+		 [298.082 / 256.0, 516.412 / 256.0, 0]])
+	rgb_image = rgb_image.dot(xform.T)
+
+	return rgb_image
 
 
 def convert_y_and_cbcr_to_rgb(y_image, cbcr_image, jpeg_mode=True, max_value=255.0):
@@ -182,27 +189,7 @@ def convert_y_and_cbcr_to_rgb(y_image, cbcr_image, jpeg_mode=True, max_value=255
 	ycbcr_image[:, :, 0] = y_image[:, :, 0]
 	ycbcr_image[:, :, 1:3] = cbcr_image[:, :, 0:2]
 
-	return convert_ycbcr_to_rgb(ycbcr_image, jpeg_mode=jpeg_mode, max_value=max_value)
-
-
-def convert_ycbcr_to_rgb(ycbcr_image, jpeg_mode=True, max_value=255.0):
-	rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])  # type: np.ndarray
-
-	if jpeg_mode:
-		rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - (128.0 * max_value / 256.0)
-		xform = np.array([[1, 0, 1.402], [1, - 0.344, - 0.714], [1, 1.772, 0]])
-		rgb_image = rgb_image.dot(xform.T)
-	else:
-		rgb_image[:, :, 0] = ycbcr_image[:, :, 0] - (16.0 * max_value / 256.0)
-		rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - (128.0 * max_value / 256.0)
-		xform = np.array(
-			[[max_value / 219.0, 0, max_value * 0.701 / 112.0],
-			 [max_value / 219, - max_value * 0.886 * 0.114 / (112 * 0.587),
-			  - max_value * 0.701 * 0.299 / (112 * 0.587)],
-			 [max_value / 219.0, max_value * 0.886 / 112.0, 0]])
-		rgb_image = rgb_image.dot(xform.T)
-
-	return rgb_image
+	return convert_ycbcr_to_rgb(ycbcr_image)
 
 
 def set_image_alignment(image, alignment):
@@ -476,7 +463,6 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 
 
 def trim_image_as_file(image):
-
 	image = np.round(image)
 	return np.clip(image, 0, 255)
 
@@ -503,6 +489,7 @@ def compute_mse(image1, image2, border_size=0):
 	mse = np.mean(np.square(diff))
 
 	return mse
+
 
 def print_filter_weights(tensor):
 	print("Tensor[%s] shape=%s" % (tensor.name, str(tensor.get_shape())))

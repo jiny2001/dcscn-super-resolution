@@ -9,7 +9,6 @@ Testing Environment: Python 3.6.1, tensorflow >= 1.3.0
 
 import logging
 import sys
-
 import tensorflow as tf
 
 import DCSCN
@@ -24,55 +23,47 @@ def main(not_parsed_args):
 		exit()
 
 	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
-
 	model.train = model.load_dynamic_datasets(FLAGS.data_dir + "/" + FLAGS.dataset,
 	                                          FLAGS.batch_image_size, FLAGS.stride_size)
-	model.test = model.load_datasets(FLAGS.data_dir + "/" + FLAGS.test_dataset,
-	                                 FLAGS.batch_dir + "/" + FLAGS.test_dataset,
-	                                 FLAGS.batch_image_size, FLAGS.stride_size)
-
 	model.build_graph()
 	model.build_optimizer()
 	model.build_summary_saver()
+
 	logging.info("\n" + str(sys.argv))
 	logging.info("Test Data:" + FLAGS.test_dataset + " Training Data:" + FLAGS.dataset)
+	util.print_num_of_total_parameters(output_to_logging=True)
 
-	final_mse = final_psnr = 0
-	test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + FLAGS.test_dataset)
+	total_psnr = total_mse = 0
 
 	for i in range(FLAGS.tests):
 
-		train(model, FLAGS, i)
-
-		total_psnr = total_mse = 0
-		for filename in test_filenames:
-			mse = model.do_for_evaluate(filename, FLAGS.output_dir, output=i is (FLAGS.tests - 1), print_console=False)
-			total_mse += mse
-			total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
+		mse = train(model, FLAGS, i)
+		psnr = util.get_psnr(mse, max_value=FLAGS.max_value)
+		total_mse += mse
+		total_psnr += psnr
 
 		logging.info("\nTrial(%d) %s" % (i, util.get_now_date()))
 		model.print_steps_completed(output_to_logging=True)
-		logging.info("MSE:%f, PSNR:%f\n" % (total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+		logging.info("MSE:%f, PSNR:%f\n" % (mse, psnr))
 
-		final_mse += total_mse
-		final_psnr += total_psnr
-
-	logging.info("=== summary [%d] %s [%s] ===" % (FLAGS.tests, model.name, util.get_now_date()))
-	util.print_num_of_total_parameters(output_to_logging=True)
-	n = len(test_filenames) * FLAGS.tests
-	logging.info("\n=== Final Average [%s] MSE:%f, PSNR:%f ===" % (FLAGS.test_dataset, final_mse / n, final_psnr / n))
+	if FLAGS.tests > 1:
+		logging.info("\n=== Final Average [%s] MSE:%f, PSNR:%f ===" % (FLAGS.test_dataset, total_mse / FLAGS.tests, total_psnr / FLAGS.tests))
 
 	model.copy_log_to_archive("archive")
 
 
 def train(model, flags, trial, load_model_name=""):
+
+	test_filenames = util.get_files_in_directory(flags.data_dir + "/" + flags.test_dataset)
+
 	model.init_all_variables()
 	if load_model_name != "":
 		model.load_model(load_model_name, output_log=True)
 
 	model.init_train_step()
 	model.init_epoch_index()
-	save_meta_data = True
+	model_updated = True
+	mse = 0
 
 	while model.lr > flags.end_lr:
 
@@ -80,26 +71,28 @@ def train(model, flags, trial, load_model_name=""):
 		model.train_batch()
 
 		if model.steps_in_epoch >= model.training_image_count:
+
+			# training epoch finished
 			model.epochs_completed += 1
-			mse = model.evaluate_test_batch(save_meta_data, trial)
-			save_meta_data = model.update_epoch_and_lr()
-			model.print_status(mse)
+			mse, psnr = model.evaluate(test_filenames)
+			model.print_status(mse, log=model_updated)
+			model.log_to_tensorboard(test_filenames[0], psnr, save_meta_data=model_updated)
+
+			model_updated = model.update_epoch_and_lr()
 			model.init_epoch_index()
 
 	model.end_train_step()
 	model.save_model(trial=trial, output_log=True)
 
-	if FLAGS.evaluate_dataset == "":
-		mse = model.evaluate_test_batch()
-		model.print_status(mse)
-	else:
-		if FLAGS.evaluate_dataset == "all":
-			test_list = ['set5', 'set14', 'bsd100']
-		else:
-			test_list = [FLAGS.evaluate_dataset]
+	# outputs result
+	test(model, flags.test_dataset)
 
-		for test_data in test_list:
-			test(model, test_data)
+	if FLAGS.do_benchmark:
+		for test_data in ['set5', 'set14', 'bsd100']:
+			if test_data != flags.test_dataset:
+				test(model, test_data)
+
+	return mse
 
 
 def test(model, test_data):
@@ -107,11 +100,11 @@ def test(model, test_data):
 	total_psnr = total_mse = 0
 
 	for filename in test_filenames:
-		mse = model.do_for_evaluate(filename, output_directory=FLAGS.output_dir, output=True)
+		mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=False)
 		total_mse += mse
 		total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
 
-	logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
+	logging.info("\n=== [%s] MSE:%f, PSNR:%f ===" % (
 		test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
 
 

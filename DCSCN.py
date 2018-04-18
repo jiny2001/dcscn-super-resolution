@@ -57,8 +57,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.lr_decay_epoch = flags.lr_decay_epoch
 
 		# Dataset or Others
-		self.dataset = flags.dataset
-		self.test_dataset = flags.test_dataset
 		self.training_image_count = max(1, (flags.training_images // flags.batch_num)) * flags.batch_num
 		self.train = None
 		self.test = None
@@ -67,8 +65,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.scale = flags.scale
 		self.max_value = flags.max_value
 		self.channels = flags.channels
-		self.jpeg_mode = flags.jpeg_mode
 		self.output_channels = 1
+		self.psnr_calc_border_size = flags.psnr_calc_border_size
+		if self.psnr_calc_border_size < 0:
+			self.psnr_calc_border_size = 2 + self.scale
 
 		# Environment (all directory name should not contain '/' after )
 		self.batch_dir = flags.batch_dir
@@ -119,10 +119,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 				name += "_M%2.1f" % self.max_value
 			if self.activator != "relu":
 				name += "_%s" % self.activator
-			if self.dataset != "yang91":
-				name += "_" + self.dataset
-			if self.batch_image_size != 32:
-				name += "_B%d" % self.batch_image_size
 			if self.clipping_norm > 0:
 				name += "_CN%.1f" % self.clipping_norm
 			if self.batch_norm:
@@ -144,8 +140,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		"""
 
 		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
-		                           resampling_method=self.resampling_method)
+		                           max_value=self.max_value, resampling_method=self.resampling_method)
 
 		datasets.set_data_dir(data_dir)
 
@@ -165,8 +160,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		util.make_dir(batch_dir)
 
 		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           jpeg_mode=self.jpeg_mode, max_value=self.max_value,
-		                           resampling_method=self.resampling_method)
+		                           max_value=self.max_value, resampling_method=self.resampling_method)
 
 		if not datasets.is_batch_exist(batch_dir):
 			datasets.build_batch(data_dir, batch_dir)
@@ -183,8 +177,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			stride_size = batch_image_size // 2
 
 		self.train = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                             jpeg_mode=self.jpeg_mode, max_value=self.max_value,
-		                             resampling_method=self.resampling_method)
+		                             max_value=self.max_value, resampling_method=self.resampling_method)
 
 		if not self.train.is_batch_exist(batch_dir):
 			self.train.build_batch(data_dir, batch_dir)
@@ -209,7 +202,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 				image_no = random.randrange(self.train.file_counts)
 				image = loader.load_random_patch(self.train.filenames[image_no],
 				                                 self.batch_image_size * self.scale,
-				                                 self.batch_image_size * self.scale, self.jpeg_mode)
+				                                 self.batch_image_size * self.scale)
 
 			if random.randrange(2) == 0:
 				image = np.fliplr(image)
@@ -277,7 +270,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			else:
 				self.build_pixel_shuffler_layer("Up-PS", self.H[-1], self.scale, input_channels)
 		else:
-			self.build_transposed_conv("Up-TC", self.H[-1], self.scale, input_channels)
+			self.build_transposed_conv("Up-TCNN", self.H[-1], self.scale, input_channels)
 
 		for i in range(self.reconstruct_layers - 1):
 			self.build_conv("R-CNN%d" % (i + 1), self.H[-1], self.cnn_size, input_channels, self.reconstruct_filters,
@@ -298,10 +291,13 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		"""
 
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
-		diff = self.y_ - self.y
-		border = 6 + self.scale
-		diff = tf.image.crop_to_bounding_box(diff, border, self.batch_image_size - 2 * border, border,
-		                                     self.batch_image_size - 2 * border)
+
+		with tf.variable_scope("CropDiff"):
+			diff = self.y_ - self.y
+			if self.psnr_calc_border_size > 0:
+				offset = self.psnr_calc_border_size
+				size = self.batch_image_size * self.scale - 2 * self.psnr_calc_border_size
+				diff = tf.image.crop_to_bounding_box(diff, offset, offset, size, size)
 
 		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
 		loss = self.mse
@@ -309,11 +305,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		if self.l2_decay > 0:
 			l2_losses = [tf.nn.l2_loss(w) for w in self.Weights]
 			# l1_losses = [tf.reduce_sum(tf.abs(w)) for w in self.weights]  # l1 loss
-
 			l2_loss = self.l2_decay * tf.add_n(l2_losses)
-			loss += l2_loss
 			if self.save_loss:
 				tf.summary.scalar("loss_l2/" + self.name, l2_loss)
+
+			loss += l2_loss
 
 		if self.save_loss:
 			tf.summary.scalar("loss/" + self.name, loss)
@@ -430,6 +426,62 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		return mse
 
+	def log_to_tensorboard(self, test_filename, psnr, save_meta_data=True):
+
+		# todo
+		save_meta_data = False
+
+		org_image = util.set_image_alignment(util.load_image(test_filename, print_console=False), self.scale)
+
+		if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
+			org_image = util.convert_rgb_to_y(org_image)
+
+		input_image = util.resize_image_by_pil(org_image, 1.0 / self.scale, resampling_method=self.resampling_method)
+		bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
+
+		feed_dict = {self.x: input_image.reshape([1, input_image.shape[0], input_image.shape[1], input_image.shape[2]]),
+		             self.x2: bicubic_image.reshape(
+			             [1, bicubic_image.shape[0], bicubic_image.shape[1], bicubic_image.shape[2]]),
+		             self.y: org_image.reshape([1, org_image.shape[0], org_image.shape[1], org_image.shape[2]]),
+		             self.dropout: 1.0,
+		             self.is_training: 0}
+
+		if save_meta_data:
+			# profiler = tf.profiler.Profile(self.sess.graph)
+
+			run_metadata = tf.RunMetadata()
+			run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			summary_str, _ = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict, options=run_options,
+			                               run_metadata=run_metadata)
+			self.test_writer.add_run_metadata(run_metadata, "step%d" % self.epochs_completed)
+
+			filename = self.checkpoint_dir + "/" + self.name + "_metadata.txt"
+			with open(filename, "w") as out:
+				out.write(str(run_metadata))
+
+			# filename = self.checkpoint_dir + "/" + self.name + "_memory.txt"
+			# tf.profiler.write_op_log(
+			# 	tf.get_default_graph(),
+			# 	log_dir=self.checkpoint_dir,
+			# 	#op_log=op_log,
+			# 	run_meta=run_metadata)
+
+			tf.contrib.tfprof.model_analyzer.print_model_analysis(
+				tf.get_default_graph(), run_meta=run_metadata,
+				tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
+
+		else:
+			summary_str, _ = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict)
+
+		self.train_writer.add_summary(summary_str, self.epochs_completed)
+		util.log_scalar_value(self.train_writer, 'training_PSNR', self.training_psnr_sum / self.training_step,
+		                      self.epochs_completed)
+		util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
+		self.train_writer.flush()
+
+		util.log_scalar_value(self.test_writer, 'PSNR', psnr, self.epochs_completed)
+		self.test_writer.flush()
+
 	def update_epoch_and_lr(self):
 
 		self.epochs_completed_in_stage += 1
@@ -476,6 +528,19 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		for weight in self.Weights:
 			util.print_filter_weights(weight)
 
+	def evaluate(self, test_filenames):
+
+		total_mse = total_psnr = 0
+		if len(test_filenames) == 0:
+			return 0, 0
+
+		for filename in test_filenames:
+			mse = self.do_for_evaluate(filename, print_console=False)
+			total_mse += mse
+			total_psnr += util.get_psnr(mse, max_value=self.max_value)
+
+		return total_mse / len(test_filenames), total_psnr / len(test_filenames)
+
 	def do(self, input_image, bicubic_input_image=None):
 
 		h, w = input_image.shape[:2]
@@ -521,21 +586,19 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		filename, extension = os.path.splitext(file_path)
 		output_folder += "/"
-		org_image = util.load_image(file_path)
+		org_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
 		util.save_image(output_folder + file_path, org_image)
 
 		if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
-			input_y_image = util.convert_rgb_to_y(org_image, jpeg_mode=self.jpeg_mode)
+			input_y_image = util.convert_rgb_to_y(org_image)
 			scaled_image = util.resize_image_by_pil(input_y_image, self.scale, resampling_method=self.resampling_method)
 			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
 			output_y_image = self.do(input_y_image)
 			util.save_image(output_folder + filename + "_result_y" + extension, output_y_image)
 
 			scaled_ycbcr_image = util.convert_rgb_to_ycbcr(
-				util.resize_image_by_pil(org_image, self.scale, self.resampling_method),
-				jpeg_mode=self.jpeg_mode)
-			image = util.convert_y_and_cbcr_to_rgb(output_y_image, scaled_ycbcr_image[:, :, 1:3],
-			                                       jpeg_mode=self.jpeg_mode)
+				util.resize_image_by_pil(org_image, self.scale, self.resampling_method))
+			image = util.convert_y_and_cbcr_to_rgb(output_y_image, scaled_ycbcr_image[:, :, 1:3])
 		else:
 			scaled_image = util.resize_image_by_pil(org_image, self.scale, resampling_method=self.resampling_method)
 			util.save_image(output_folder + filename + "_bicubic_y" + extension, scaled_image)
@@ -543,43 +606,39 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		util.save_image(output_folder + filename + "_result" + extension, image)
 
-	def do_for_evaluate(self, file_path, output_directory="output", output=True, print_console=False):
+	def do_for_evaluate_with_output(self, file_path, output_directory, print_console=False):
 
 		filename, extension = os.path.splitext(file_path)
 		output_directory += "/" + self.name + "/"
 		util.make_dir(output_directory)
+
 		true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
 
 		if true_image.shape[2] == 3 and self.channels == 1:
-			input_y_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
-			                                         alignment=self.scale, convert_ycbcr=True, jpeg_mode=self.jpeg_mode)
+
 			# for color images
-			if output:
-				input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
-				                                                 resampling_method=self.resampling_method)
+			input_y_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
+			                                         alignment=self.scale, convert_ycbcr=True)
+			input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
+			                                                 resampling_method=self.resampling_method)
 
-				true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image, jpeg_mode=self.jpeg_mode)
+			true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image)
 
-				output_y_image = self.do(input_y_image, input_bicubic_y_image)
-				mse = util.compute_mse(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=6 + self.scale)
-				loss_image = util.get_loss_image(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=self.scale)
+			output_y_image = self.do(input_y_image, input_bicubic_y_image)
+			mse = util.compute_mse(true_ycbcr_image[:, :, 0:1], output_y_image,
+			                       border_size=self.psnr_calc_border_size)
+			loss_image = util.get_loss_image(true_ycbcr_image[:, :, 0:1], output_y_image,
+			                                 border_size=self.psnr_calc_border_size)
 
-				output_color_image = util.convert_y_and_cbcr_to_rgb(output_y_image, true_ycbcr_image[:, :, 1:3],
-				                                                    jpeg_mode=self.jpeg_mode)
+			output_color_image = util.convert_y_and_cbcr_to_rgb(output_y_image, true_ycbcr_image[:, :, 1:3])
 
-				util.save_image(output_directory + file_path, true_image)
-				util.save_image(output_directory + filename + "_input" + extension, input_y_image)
-				util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_y_image)
-				util.save_image(output_directory + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
-				util.save_image(output_directory + filename + "_result" + extension, output_y_image)
-				util.save_image(output_directory + filename + "_result_c" + extension, output_color_image)
-				util.save_image(output_directory + filename + "_loss" + extension, loss_image)
-			else:
-				true_y_image = util.convert_rgb_to_y(true_image, jpeg_mode=self.jpeg_mode)
-				input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
-				                                                 resampling_method=self.resampling_method)
-				output_y_image = self.do(input_y_image, input_bicubic_y_image)
-				mse = util.compute_mse(true_y_image, output_y_image, border_size=6 + self.scale)
+			util.save_image(output_directory + file_path, true_image)
+			util.save_image(output_directory + filename + "_input" + extension, input_y_image)
+			util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_y_image)
+			util.save_image(output_directory + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
+			util.save_image(output_directory + filename + "_result" + extension, output_y_image)
+			util.save_image(output_directory + filename + "_result_c" + extension, output_color_image)
+			util.save_image(output_directory + filename + "_loss" + extension, loss_image)
 
 		elif true_image.shape[2] == 1 and self.channels == 1:
 
@@ -589,10 +648,41 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
 			                                                 resampling_method=self.resampling_method)
 			output_image = self.do(input_image, input_bicubic_y_image)
-			mse = util.compute_mse(true_image, output_image, border_size=6 + self.scale)
-			if output:
-				util.save_image(output_directory + file_path, true_image)
-				util.save_image(output_directory + filename + "_result" + extension, output_image)
+			mse = util.compute_mse(true_image, output_image, border_size=self.psnr_calc_border_size)
+			util.save_image(output_directory + file_path, true_image)
+			util.save_image(output_directory + filename + "_result" + extension, output_image)
+		else:
+			mse = 0
+
+		if print_console:
+			print("MSE:%f, PSNR:%f" % (mse, util.get_psnr(mse)))
+
+		return mse
+
+	def do_for_evaluate(self, file_path, print_console=False):
+
+		true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
+
+		if true_image.shape[2] == 3 and self.channels == 1:
+
+			# for color images
+			input_y_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
+			                                         alignment=self.scale, convert_ycbcr=True)
+			true_y_image = util.convert_rgb_to_y(true_image)
+			input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
+			                                                 resampling_method=self.resampling_method)
+			output_y_image = self.do(input_y_image, input_bicubic_y_image)
+			mse = util.compute_mse(true_y_image, output_y_image, border_size=self.psnr_calc_border_size)
+
+		elif true_image.shape[2] == 1 and self.channels == 1:
+
+			# for monochrome images
+			input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
+			                                       alignment=self.scale)
+			input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
+			                                                 resampling_method=self.resampling_method)
+			output_image = self.do(input_image, input_bicubic_y_image)
+			mse = util.compute_mse(true_image, output_image, border_size=self.psnr_calc_border_size)
 		else:
 			mse = 0
 
