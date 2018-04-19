@@ -6,6 +6,8 @@ output/
 graphs/
 batch_data/
 tf_log/
+data/yang_bsd_8
+data/div2k
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
