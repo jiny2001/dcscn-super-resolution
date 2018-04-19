@@ -102,7 +102,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			name = "dcscn_L%d_F%d" % (self.layers, self.filters)
 			if self.min_filters != 0:
 				name += "to%d" % self.min_filters
-			if self.filters_decay_gamma != 1.0:
+			if self.filters_decay_gamma != 1.5:
 				name += "_G%2.2f" % self.filters_decay_gamma
 			if self.cnn_size != 3:
 				name += "_C%d" % self.cnn_size
@@ -122,7 +122,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 				name += "_%s" % self.activator
 			if self.batch_norm:
 				name += "_BN"
-			if self.reconstruct_layers > 1:
+			if self.reconstruct_layers >= 1:
 				name += "_R%d" % self.reconstruct_layers
 				if self.reconstruct_filters != 1:
 					name += "F%d" % self.reconstruct_filters

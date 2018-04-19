@@ -14,6 +14,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # Model
+flags.DEFINE_integer("layers", 12, "Number of layers of CNNs")
 flags.DEFINE_integer("filters", 196, "Number of CNN filters")
 flags.DEFINE_integer("min_filters", 48, "Number of the last CNN filters")
 flags.DEFINE_integer("nin_filters", 64, "Number of CNN filters in A1 at Reconstruction network")
@@ -21,16 +22,15 @@ flags.DEFINE_integer("nin_filters2", 32, "Number of CNN filters in B1 and B2 at 
 flags.DEFINE_integer("cnn_size", 3, "Size of CNN filters")
 flags.DEFINE_integer("reconstruct_layers", 1, "Number of Reconstruct CNN Layers. Should be larger than 1")
 flags.DEFINE_integer("reconstruct_filters", 32, "Number of Reconstruct CNN Filters")
-flags.DEFINE_integer("layers", 12, "Number of layers of CNNs")
 flags.DEFINE_boolean("use_nin", True, "Use Network In Network")
 flags.DEFINE_boolean("bicubic_init", True, "make bicubic interpolation values as initial input of x2")
 flags.DEFINE_float("dropout_rate", 0.8, "For dropout value for  value. Don't use if it's 1.0.")
 flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, prelu, sigmoid, tanh]")
 flags.DEFINE_float("filters_decay_gamma", 1.5, "Gamma")
 flags.DEFINE_boolean("batch_norm", False, "batch normalization")
-flags.DEFINE_boolean("pixel_shuffler", False, "Use Pixel Shuffler insted of using transposed CNN")
+flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler insted of using transposed CNN")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
-flags.DEFINE_float("clipping_norm", 3, "Norm for gradient clipping")
+flags.DEFINE_float("clipping_norm", 5, "Norm for gradient clipping")
 
 # Training
 flags.DEFINE_string("initializer", "he", "Initializer for weights can be [uniform, stddev, xavier, he, identity, zero]")
