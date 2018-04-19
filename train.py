@@ -4,6 +4,7 @@ Author: Jin Yamanaka
 Github: https://github.com/jiny2001/dcscn-image-super-resolution
 Ver: 2.0
 
+DCSCN training functions.
 Testing Environment: Python 3.6.1, tensorflow >= 1.3.0
 """
 
@@ -15,7 +16,6 @@ import DCSCN
 from helper import args, utilty as util
 
 FLAGS = args.get()
-
 
 def main(not_parsed_args):
 	if len(not_parsed_args) > 1:

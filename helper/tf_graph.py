@@ -203,8 +203,6 @@ class TensorflowGraph:
 			print("Error. [%s] is not exist!" % filename)
 			exit(-1)
 
-		print("Model restoring... [ %s ]." % filename)
-
 		self.saver.restore(self.sess, filename)
 		if output_log:
 			logging.info("Model restored [ %s ]." % filename)

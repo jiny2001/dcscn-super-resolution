@@ -2,16 +2,19 @@
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
 Ver: 2.0
 
-DCSCN model implementation (Transposed-CNN version)
+DCSCN model implementation (Transposed-CNN / Pixel Shuffler version)
+See Detail: https://github.com/jiny2001/dcscn-super-resolution/
+
+Please note this model is updated version of the paper.
+If you want to check original source code and results of the paper, please see https://github.com/jiny2001/dcscn-super-resolution/tree/ver1.
 """
 
 import logging
+import numpy as np
 import os
 import random
-import time
-
-import numpy as np
 import tensorflow as tf
+import time
 
 from helper import loader, tf_graph, utilty as util
 
@@ -70,7 +73,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		if self.psnr_calc_border_size < 0:
 			self.psnr_calc_border_size = 2 + self.scale
 
-		# Environment (all directory name should not contain '/' after )
+		# Environment (all directory name should not contain tailing '/'  )
 		self.batch_dir = flags.batch_dir
 
 		# initialize variables
@@ -113,14 +116,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
 					name += "_B%d" % self.nin_filters2
 			if self.pixel_shuffler:
 				name += "_PS"
-			if self.dropout_rate != 1.0:
-				name += "_D%0.2f" % self.dropout_rate
 			if self.max_value != 255.0:
 				name += "_M%2.1f" % self.max_value
-			if self.activator != "relu":
+			if self.activator != "prelu":
 				name += "_%s" % self.activator
-			if self.clipping_norm > 0:
-				name += "_CN%.1f" % self.clipping_norm
 			if self.batch_norm:
 				name += "_BN"
 			if self.reconstruct_layers > 1:
@@ -582,10 +581,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 	def do_for_file(self, file_path, output_folder="output"):
 
-		filename, extension = os.path.splitext(file_path)
-		output_folder += "/"
-		org_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
-		util.save_image(output_folder + file_path, org_image)
+		org_image = util.load_image(file_path)
+
+		filename, extension = os.path.splitext(os.path.basename(file_path))
+		output_folder += "/" + self.name + "/"
+		util.save_image(output_folder + filename + extension, org_image)
 
 		if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
 			input_y_image = util.convert_rgb_to_y(org_image)

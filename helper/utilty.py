@@ -8,24 +8,14 @@ import datetime
 import logging
 import math
 import os
-import time
 from os import listdir
-
-import matplotlib.pyplot as plt
-import numpy as np
-import tensorflow as tf
-from PIL import Image
 from os.path import isfile, join
 from scipy import misc
 from sklearn.manifold import TSNE
-
-MARKERS = [['red', 100, 'o'], ['black', 100, 'x'], ['cyan', 100, 'd'], ['blue', 150, '1'], ['purple', 100, 's'],
-           ['green', 100, 'v'], ['yellow', 100, 'o'], ['orange', 100, 'o'], ['magenta', 100, 'o'], ['pink', 100, 'o'],
-           ['brown', 100, 'o'], ['darkgreen', 100, 'o']]
-MARKERS2 = [['red', 300, 'o'], ['black', 300, 'x'], ['cyan', 300, 'd'], ['blue', 450, '1'], ['purple', 300, 's'],
-            ['green', 300, 'v'], ['yellow', 300, 'o'], ['orange', 300, 'o'], ['magenta', 300, 'o'], ['pink', 300, 'o'],
-            ['brown', 300, 'o'], ['darkgreen', 300, 'o']]
-
+import tensorflow as tf
+import time
+import numpy as np
+from PIL import Image
 
 class Timer:
 	def __init__(self, timer_count=100):
@@ -545,38 +535,6 @@ def print_num_of_total_parameters(output_detail=False, output_to_logging=False):
 		if output_detail:
 			print(parameters_string)
 		print("Total %d variables, %s params" % (len(tf.trainable_variables()), "{:,}".format(total_parameters)))
-
-
-def plot_with_labels(attributes, filename, markers=None, perplexity=25, n_iter=1000):
-	print('Drawing scatter plot on [%s]...' % filename)
-
-	if attributes.shape[1] > 2:
-		print('Reducing attributes...')
-		tsne = TSNE(perplexity=perplexity, n_components=2, init='pca', n_iter=n_iter)
-		attributes = tsne.fit_transform(attributes)
-
-	plt.rcParams.update({'font.size': 20})
-	plt.figure(figsize=(40, 40))  # in inches
-
-	for i in range(0, len(attributes)):
-		x, y = attributes[i, :]
-
-		if markers is None:
-			plot_scatter(x, y)
-		else:
-			plot_scatter(x, y, marker=markers[i])
-
-	for i in range(8):
-		plt.scatter(-1000 + (i + 1) * 40, 110, color=MARKERS[i][0], s=MARKERS[i][1] * 9 // 2, marker=MARKERS[i][2])
-
-	plt.savefig(filename)
-
-
-def plot_scatter(x, y, marker=0):
-	if marker >= len(MARKERS):
-		marker = len(MARKERS) - 1
-
-	plt.scatter(x, y, color=MARKERS[marker][0], s=MARKERS[marker][1] * 3 // 2, marker=MARKERS[marker][2])
 
 
 def flip(image, flip_type, invert=False):

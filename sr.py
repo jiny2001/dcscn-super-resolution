@@ -4,7 +4,17 @@ Author: Jin Yamanaka
 Github: https://github.com/jiny2001/dcscn-image-super-resolution
 Ver: 2.0
 
-Apply Super Resolution for image file: Python 3.6.1, tensorflow 1.2.0
+Apply Super Resolution for image file.
+
+--file [your image filename]: will generat HR images.
+see output/[model_name]/ for checking result images.
+
+Also you must put same model args as you trained.
+For ex, if you trained like
+python3 train.py --layers 4 --filters 24 --dataset test --training_images 400
+
+Then you must run evaluate.py like below.
+python3 evaluate.py --layers 4 --filters 24 --file your_image_file_path
 """
 
 import tensorflow as tf
