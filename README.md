@@ -31,7 +31,7 @@ As a ver2, we also implemented these features.
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="864">
 
-Our model, DCSCN was much lighter than other Deep Learning based SISR models which is [ver 1.](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1). As a ver2, we use larger model and recent technics to get a better image restoration performace.
+Our model, DCSCN was much lighter than other Deep Learning based SISR models which is [ver 1](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1). As a ver2, we use larger model and recent technics to get a better image restoration performace.
 
 
 ## Requirements
@@ -89,11 +89,30 @@ Each training and evaluation result will be added to **log.txt**.
 
 ```
 # training with bsd200 dataset
-python train.py --dataset bsd200
+python train.py --dataset bsd200 --training_images 80000
 
 # training with small model
-python train.py --dataset bsd200 --layers 7 --filters 64
+python train.py --dataset bsd200 --layers 7 --filters 64 --training_images 40000
 ```
+
+Important parameters are those.
+
+| Parameter arg | Name | Default | Explanation |
+|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|
+| layers |  |  |  |
+| filters |  |  |  |
+| filters_decay_gamma |  |  |  |
+| pixel_shuffler |  |  |  |
+| self_ensemble |  |  |  |
+| training_images | Num of batch images for training epoch | 24000 | This number of images are used for training one epoch. |
+| dropout_rate |  |  |  |
+| initializer |  |  |  |
+| activator |  |  |  |
+| optimizer |  |  |  |
+| batch_image_size |  |  |  |
+| batch_num |  |  |  |
+
+
 
 ## Data augmentation
 

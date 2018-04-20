@@ -41,7 +41,7 @@ flags.DEFINE_float("beta1", 0.1, "Beta1 for adam optimizer")
 flags.DEFINE_float("beta2", 0.1, "Beta2 for adam optimizer")
 flags.DEFINE_float("momentum", 0.9, "Momentum for momentum optimizer and rmsprop optimizer")
 flags.DEFINE_integer("batch_num", 20, "Number of mini-batch images for training")
-flags.DEFINE_integer("batch_image_size", 32, "Image size for mini-batch")
+flags.DEFINE_integer("batch_image_size", 48, "Image size for mini-batch")
 flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, use half of batch_image_size")
 
 # Learning Rate Control for Training
@@ -49,7 +49,7 @@ flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 9, "")
 flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
-flags.DEFINE_integer("training_images", 12000, "Number of training on each epoch")
+flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
 
 # Dataset or Others
 flags.DEFINE_string("test_dataset", "set5", "Directory for test dataset [set5, set14, bsd100, urban100, all]")
