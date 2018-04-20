@@ -17,13 +17,13 @@ As a ver2, we also implemented these features.
 * __Pixel Shuffler__ from ["Real-Time Single Image and Video Super-Resolution Using an Efficient Sub-Pixel Convolutional Neural Network"
 ](https://arxiv.org/abs/1609.05158)
 
-* __Transposed-CNN__ from ["Fully Convolutional Networks for Semantic Segmentation"](https://arxiv.org/abs/1411.4038)
+* __Transposed-CNN__ (optional) from ["Fully Convolutional Networks for Semantic Segmentation"](https://arxiv.org/abs/1411.4038)
 
 * __Self Ensemble__ from ["Seven ways to improve example-based single image super resolution"](https://arxiv.org/abs/1511.02228)
 
 * __Clipping Normalization__ (Gradient clipping)
 
-* Dynamically load training images
+* Dynamically load training images (optional)
 
 * Add extra layers / Update default parameters for better PSNR result
 
@@ -45,8 +45,8 @@ tensorflow > 1.0, scipy, numpy and pillow
 
 The sample result of default parameter is here. You can have even better PSNR than below with using larger filters or deeper layers with our model.
 
-| DataSet | Bicubic | SRCN | SelfEx | DRCN | VDSR | DCSCN (normal) | DCSCN (large) |
-|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|
+| DataSet | Bicubic | DRCN | VDSR | DCSCN (ver2) | |
+|:-------:|:-------:|:----:|:----:|:----:|:----:|
 
 Results and model will be uploaded in some days!!
 
@@ -118,7 +118,7 @@ Important parameters are those.
 
 To get a better performance, data augmentation is needed. You can use **augmentation.py** to build an augmented dataset. The arg, augment_level = 4, means it will add right-left, top-bottom and right-left and top-bottom fillped images to make 4 times bigger dataset. And there **yang91_4** directory will be generated as an augmented dataset.
 
-To have better model, you should use larger training data like (BSD200 + Yang91) dataset.
+To have better model, you should use larger training data like (BSD200 + Yang91) x (8 augment) dataset.
 
 ```
 # build 4x augmented dataset for yang91 dataset (will add flipped images)
@@ -134,10 +134,11 @@ python train.py --dataset yang91_4
 
 ## Visualization
 
-During the training, tensorboard log is available. You can use "--save_weights True" to add histogram and stddev logging of each weights. Those are logged under **tf_log** directory.
+During the training, tensorboard log is available. Those are logged under **tf_log** directory.
 
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/model.png" width="400">
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/model_v2.png" width="400">
 
-Also we log average PSNR of traing and testing, and then generate csv and plot files under **graphs** directory. Please note training PSNR contains dropout factor so it will be less than test PSNR. This graph is from training our compact version of DCSCN.
+You can check test PSNR transition during training. Also mean / std / histogram of every weights and biases are logged at tensorboard.
 
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/graph.png" width="400">
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/tensorboard_1.png" width="800">
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/tensorboard_2.png" width="800">

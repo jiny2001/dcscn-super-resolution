@@ -24,7 +24,7 @@ flags.DEFINE_integer("reconstruct_layers", 1, "Number of Reconstruct CNN Layers.
 flags.DEFINE_integer("reconstruct_filters", 32, "Number of Reconstruct CNN Filters")
 flags.DEFINE_boolean("use_nin", True, "Use Network In Network")
 flags.DEFINE_boolean("bicubic_init", True, "make bicubic interpolation values as initial input of x2")
-flags.DEFINE_float("dropout_rate", 0.8, "For dropout value for  value. Don't use if it's 1.0.")
+flags.DEFINE_float("dropout_rate", 0.8, "dropout value. Don't use if it's 1.0.")
 flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, prelu, sigmoid, tanh]")
 flags.DEFINE_float("filters_decay_gamma", 1.5, "Gamma")
 flags.DEFINE_boolean("batch_norm", False, "batch normalization")
@@ -52,8 +52,8 @@ flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
 flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
 
 # Dataset or Others
-flags.DEFINE_string("test_dataset", "set5", "Directory for test dataset [set5, set14, bsd100, urban100, all]")
 flags.DEFINE_string("dataset", "bsd200", "Training dataset dir. [yang91, general100, bsd200, other]")
+flags.DEFINE_string("test_dataset", "set5", "Directory for test dataset [set5, set14, bsd100, urban100, all]")
 flags.DEFINE_integer("tests", 1, "Number of training sets")
 flags.DEFINE_boolean("do_benchmark", False, "Evaluate the performance for set5, set14 and bsd100 after the training.")
 
