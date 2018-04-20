@@ -6,11 +6,11 @@ by [Jin Yamanaka](https://github.com/jiny2001), Shigesumi Kuwashima and [Takio K
 
 ## Overview (Ver 2.)
 
-This is a tensorflow implementation of ["Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"](https://arxiv.org/abs/1707.05425), a deep learning based Single-Image Super-Resolution (SISR) model. We named it **DCSCN**.
+This is a tensorflow implementation of ["Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"](https://arxiv.org/abs/1707.05425), a deep learning based Single-Image Super-Resolution (SISR) model. We named it **DCSCN**. If you are checking the paper's code and results, please check [ver1 branch](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1).
 
 The model structure is like below. We use Deep CNN with Residual Net, Skip Connection and Network in Network. A combination of Deep CNNs and Skip connection layers is used as a feature extractor for image features on both local and global area. Parallelized 1x1 CNNs, like the one called Network in Network, is also used for image reconstruction.
 
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1_v2.jpeg" width="800">
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1_v2.png" width="800">
 
 As a ver2, we also implemented these features.
 
@@ -19,9 +19,9 @@ As a ver2, we also implemented these features.
 
 * __Transposed-CNN__ from ["Fully Convolutional Networks for Semantic Segmentation"](https://arxiv.org/abs/1411.4038)
 
-* Self Ensemble from ["Seven ways to improve example-based single image super resolution"](https://arxiv.org/abs/1511.02228)
+* __Self Ensemble__ from ["Seven ways to improve example-based single image super resolution"](https://arxiv.org/abs/1511.02228)
 
-* Clipping Normalization (Gradient clipping)
+* __Clipping Normalization__ (Gradient clipping)
 
 * Dynamically load training images
 
@@ -31,10 +31,7 @@ As a ver2, we also implemented these features.
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="864">
 
-
-Our model, DCSCN is much lighter than other Deep Learning based SISR models. Here is a comparison chart of performance vs computation complexity from our paper.
-
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/compare.png" width="600">
+Our model, DCSCN was much lighter than other Deep Learning based SISR models which is [ver 1.](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1). As a ver2, we use larger model and recent technics to get a better image restoration performace.
 
 
 ## Requirements
