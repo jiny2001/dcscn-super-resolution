@@ -2,9 +2,9 @@
 
 Now we have these features in my model/training experiments. Will upload new performance/model/readme soon later.
 
-If you are checking my model and result in "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network", please check ver1 branch. [ https://github.com/jiny2001/dcscn-super-resolution/tree/ver1 ]
+If you are checking my model and result in "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network", please check [ver1 branch](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1).
 
-* Pixel Shuffler or Transposed CNN upsampling layer
+* Pixel Shuffler or Transposed-CNN upsampling layer
 * Self Ensemble
 * Clipping Normalization
 * Dynamically load training images

@@ -88,7 +88,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		util.make_dir(self.checkpoint_dir)
 		util.make_dir(flags.graph_dir)
 		util.make_dir(self.tf_log_dir)
-		if flags.initialise_tf_log:
+		if flags.initialize_tf_log:
 			util.clean_dir(self.tf_log_dir)
 		util.set_logging(flags.log_filename, stream_log_level=logging.INFO, file_log_level=logging.INFO,
 		                 tf_log_level=tf.logging.WARN)
@@ -653,7 +653,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			mse = 0
 
 		if print_console:
-			print("MSE:%f, PSNR:%f" % (mse, util.get_psnr(mse)))
+			print("[%s] MSE:%f, PSNR:%f" % (filename, mse, util.get_psnr(mse)))
 
 		return mse
 

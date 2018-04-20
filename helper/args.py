@@ -75,7 +75,7 @@ flags.DEFINE_string("model_name", "", "model name for save files and tensorboard
 flags.DEFINE_string("load_model_name", "", "Filename of model loading before start [filename or 'default']")
 
 # Debugging or Logging
-flags.DEFINE_boolean("initialise_tf_log", True, "Clear all tensorboard log before start")
+flags.DEFINE_boolean("initialize_tf_log", True, "Clear all tensorboard log before start")
 flags.DEFINE_boolean("save_loss", True, "Save loss")
 flags.DEFINE_boolean("save_weights", True, "Save weights and biases")
 flags.DEFINE_boolean("save_images", False, "Save CNN weights as images")

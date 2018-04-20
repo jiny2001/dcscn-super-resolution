@@ -64,12 +64,12 @@ class TensorflowGraph:
 		config = tf.ConfigProto()
 		config.gpu_options.allow_growth = False
 
-		print("Session and graph Initialised.")
+		print("Session and graph initialized.")
 		self.sess = tf.InteractiveSession(config=config, graph=tf.Graph())
 
 	def init_all_variables(self):
 		self.sess.run(tf.global_variables_initializer())
-		print("Model Initialised.")
+		print("Model initialized.")
 
 	def build_activator(self, input_tensor, features: int, activator="", leaky_relu_alpha=0.1, base_name=""):
 
@@ -195,7 +195,10 @@ class TensorflowGraph:
 	def load_model(self, name="", trial=0, output_log=False):
 
 		if name == "" or name == "default":
-			filename = self.checkpoint_dir + "/" + self.name + "_" + str(trial) + ".ckpt"
+			name = self.name
+
+		if trial > 0:
+			filename = self.checkpoint_dir + "/" + name + "_" + str(trial) + ".ckpt"
 		else:
 			filename = self.checkpoint_dir + "/" + name + ".ckpt"
 
@@ -211,8 +214,11 @@ class TensorflowGraph:
 
 	def save_model(self, name="", trial=0, output_log=False):
 
-		if name == "":
-			filename = self.checkpoint_dir + "/" + self.name + "_" + str(trial) + ".ckpt"
+		if name == "" or name == "default":
+			name = self.name
+
+		if trial > 0:
+			filename = self.checkpoint_dir + "/" + name + "_" + str(trial) + ".ckpt"
 		else:
 			filename = self.checkpoint_dir + "/" + name + ".ckpt"
 

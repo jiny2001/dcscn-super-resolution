@@ -39,8 +39,6 @@ def main(not_parsed_args):
 	model.build_summary_saver()
 	model.init_all_variables()
 
-	logging.info("evaluate model performance")
-
 	if FLAGS.test_dataset == "all":
 		test_list = ['set5', 'set14', 'bsd100']
 	else:
@@ -58,9 +56,9 @@ def test(model, test_data):
 
 	for filename in test_filenames:
 		if FLAGS.save_results:
-			mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir)
+			mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=True)
 		else:
-			mse = model.do_for_evaluate(filename)
+			mse = model.do_for_evaluate(filename, print_console=True)
 		total_mse += mse
 		total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
 
