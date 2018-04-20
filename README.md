@@ -98,13 +98,13 @@ python train.py --dataset bsd200 --layers 7 --filters 64 --training_images 40000
 Important parameters are those.
 
 | Parameter arg | Name | Default | Explanation |
-|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|
+|:-------:|:-------:|:----:|:----:|
 | layers |  |  |  |
 | filters |  |  |  |
 | filters_decay_gamma |  |  |  |
 | pixel_shuffler |  |  |  |
 | self_ensemble |  |  |  |
-| training_images | Num of batch images for training epoch | 24000 | This number of images are used for training one epoch. |
+| training_images | Batch images for training epoch | 24000 | This number of batch images are used for training one epoch. I usually use 100,000 batch images for each 10 epochs for each Learning Rate. |
 | dropout_rate |  |  |  |
 | initializer |  |  |  |
 | activator |  |  |  |
