@@ -291,12 +291,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 
-		with tf.variable_scope("CropDiff"):
-			diff = self.y_ - self.y
-			if self.psnr_calc_border_size > 0:
-				offset = self.psnr_calc_border_size
-				size = self.batch_image_size * self.scale - 2 * self.psnr_calc_border_size
-#				diff = tf.image.crop_to_bounding_box(diff, offset, offset, size, size)
+#		with tf.variable_scope("CropDiff"):
+		diff = self.y_ - self.y
+		# if self.psnr_calc_border_size > 0:
+		# 	offset = self.psnr_calc_border_size
+		# 	size = self.batch_image_size * self.scale - 2 * self.psnr_calc_border_size
+		#	diff = tf.image.crop_to_bounding_box(diff, offset, offset, size, size)
 
 		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
 		loss = self.mse

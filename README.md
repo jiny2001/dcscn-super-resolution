@@ -1,29 +1,31 @@
-# Now updated to ver2!
-
-Now we have these features in my model/training experiments. Will upload new performance/model/readme soon later.
-
-If you are checking my model and result in "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network", please check [ver1 branch](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1).
-
-* Pixel Shuffler or Transposed-CNN upsampling layer
-* Self Ensemble
-* Clipping Normalization
-* Dynamically load training images
-* Add extra layers / Update default parameters for better PSNR result
-* Faster evaluation/computation
-
 
 # Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network
 
 by [Jin Yamanaka](https://github.com/jiny2001), Shigesumi Kuwashima and [Takio Kurita](http://home.hiroshima-u.ac.jp/tkurita/profile-e.html)
 
-## Overview
+
+## Overview (Ver 2.)
 
 This is a tensorflow implementation of ["Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"](https://arxiv.org/abs/1707.05425), a deep learning based Single-Image Super-Resolution (SISR) model. We named it **DCSCN**.
 
 The model structure is like below. We use Deep CNN with Residual Net, Skip Connection and Network in Network. A combination of Deep CNNs and Skip connection layers is used as a feature extractor for image features on both local and global area. Parallelized 1x1 CNNs, like the one called Network in Network, is also used for image reconstruction.
 
-<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1.jpeg" width="800">
+<img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/figure1_v2.jpeg" width="800">
 
+As a ver2, we also implemented these features.
+
+* __Pixel Shuffler__ from ["Real-Time Single Image and Video Super-Resolution Using an Efficient Sub-Pixel Convolutional Neural Network"
+](https://arxiv.org/abs/1609.05158)
+
+* __Transposed-CNN__ from ["Fully Convolutional Networks for Semantic Segmentation"](https://arxiv.org/abs/1411.4038)
+
+* Self Ensemble from ["Seven ways to improve example-based single image super resolution"](https://arxiv.org/abs/1511.02228)
+
+* Clipping Normalization (Gradient clipping)
+
+* Dynamically load training images
+
+* Add extra layers / Update default parameters for better PSNR result
 
 ## Sample result
 
@@ -48,9 +50,8 @@ The sample result of default parameter is here. You can have even better PSNR th
 
 | DataSet | Bicubic | SRCN | SelfEx | DRCN | VDSR | DCSCN (normal) | DCSCN (large) |
 |:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|
-|Set5 x2|33.66|36.66|36.49|37.63|37.53|37.54|37.72|
-|Set14 x2|30.24|32.42|32.22|33.04|33.03|33.02|33.15|
-|BSD100 x2|29.56|31.36|31.18|31.85|31.90|31.88|32.03|
+
+Results and model will be uploaded in some days!!
 
 ## Evaluate
 
@@ -59,14 +60,14 @@ Learned weights for some parameters are included in this GitHub. Execute **evalu
 Three pre-trained models (compact, normal, large) are included.
 
 ```
-# evaluating set14 dataset with normal model
-python evaluate.py --test_dataset set14 --dataset yang_bsd_4 --filters_decay_gamma 1.5 --save_results True
+# evaluating set14 dataset
+python evaluate.py --test_dataset set14 --save_results True
 
-# evaluating set5 dataset with compact model
-python evaluate.py --test_dataset set5 --dataset yang_bsd_4 --save_results True --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
+# evaluating set5 dataset with small model
+python evaluate.py --test_dataset set5 --save_results True --layers 7 --filters 64
 
-# evaluating all(set5,set14,bsd100) dataset with large model
-python evaluate.py --test_dataset all --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3
+# evaluating all(set5,set14,bsd100) dataset
+python evaluate.py --test_dataset all
 ```
 
 ## Apply to your own image
@@ -76,17 +77,11 @@ Place your image file in this project directory. And then run "sr.py --file 'you
 If you want to apply this model on your image001.png file, try those.
 
 ```
-# apply super resoltion on image001.jpg (then see results at output directory)
-python sr.py --file your_file.png --dataset yang_bsd_4 --filters_decay_gamma 1.5 
+# apply super resolution on image001.jpg (then see results at output directory)
+python sr.py --file your_file.png
 
-# apply super resoltion with compact model
-python sr.py --file your_file.png --dataset yang_bsd_4 --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
-
-# apply super resoltion with large model
-python sr.py --file your_file.png --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3
-
-# apply super resoltion with large model for scale x3
-python sr.py --file your_file.png --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3 --scale 3
+# apply super resolution with small model
+python sr.py --file your_file.png --layers 7 --filters 64
 ```
 
 ## How to train
@@ -96,14 +91,11 @@ You can train with any datasets. Put your image files as a training dataset into
 Each training and evaluation result will be added to **log.txt**.
 
 ```
-# training with yang91 dataset
-python train.py --dataset yang91
+# training with bsd200 dataset
+python train.py --dataset bsd200
 
-# training with larger filters and deeper layers
-python train.py --dataset yang91 --filters 128 --layers 10
-
-# after training has done, you can apply super resolution on your own image file. (put same args which you used on training)
-python sr.py --file your_file.png --dataset yang91 --filters 128 --layers 10
+# training with small model
+python train.py --dataset bsd200 --layers 7 --filters 64
 ```
 
 ## Data augmentation
@@ -122,7 +114,6 @@ python augmentation.py --dataset yang91 --augment_level 8
 # train with augmented data
 python train.py --dataset yang91_4
 ```
-
 
 
 ## Visualization

@@ -175,9 +175,10 @@ class TensorflowGraph:
 
 	def build_pixel_shuffler_layer(self, name, h, scale, filters, activator=None):
 
-		self.build_conv(name, h, self.cnn_size, filters, scale * scale * filters, use_batch_norm=False, use_bias=True)
-		self.H.append(tf.depth_to_space(self.H[-1], scale))
-		self.build_activator(self.H[-1], filters, activator, base_name=name)
+		with tf.variable_scope(name):
+			self.build_conv(name+"_CNN", h, self.cnn_size, filters, scale * scale * filters, use_batch_norm=False, use_bias=True)
+			self.H.append(tf.depth_to_space(self.H[-1], scale))
+			self.build_activator(self.H[-1], filters, activator, base_name=name)
 
 	def copy_log_to_archive(self, archive_name):
 
