@@ -9,7 +9,7 @@ import configparser
 import logging
 import os
 import random
-
+from scipy import misc
 import numpy as np
 
 from helper import utilty as util
@@ -68,15 +68,20 @@ def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0
 
 
 def load_input_batch_image(batch_dir, image_number):
-	return util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
-
+#	return util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+	image = misc.imread(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number)
+	return image.reshape(image.shape[0], image.shape[1],1)
 
 def load_interpolated_batch_image(batch_dir, image_number):
-	return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+#	return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+	image = misc.imread(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number)
+	return image.reshape(image.shape[0], image.shape[1], 1)
 
 
 def load_true_batch_image(batch_dir, image_number):
-	return util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+#	return util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+	image = misc.imread(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number)
+	return image.reshape(image.shape[0], image.shape[1], 1)
 
 
 def save_input_batch_image(batch_dir, image_number, image):
@@ -264,16 +269,16 @@ class BatchDataSets:
 	def load_all_batch_images(self):
 
 		print("Allocating memory for all batch images...")
-		self.input_images = np.zeros(shape=[self.count, self.batch_image_size, self.batch_image_size, 1])  # type: np.ndarray
-		self.input_interpolated_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1])  # type: np.ndarray
-		self.true_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1])  # type: np.ndarray
+		self.input_images = np.zeros(shape=[self.count, self.batch_image_size, self.batch_image_size, 1],dtype=np.int8)  # type: np.ndarray
+		self.input_interpolated_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1],dtype=np.int8)  # type: np.ndarray
+		self.true_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1],dtype=np.int8)  # type: np.ndarray
 
 		print("Loading all batch images...")
 		for i in range(self.count):
 			self.input_images[i] = load_input_batch_image(self.batch_dir, i)
 			self.input_interpolated_images[i] = load_interpolated_batch_image(self.batch_dir, i)
 			self.true_images[i] = load_true_batch_image(self.batch_dir, i)
-			if i % 100 == 0:
+			if i % 1000 == 0:
 				print('.', end='', flush=True)
 
 
