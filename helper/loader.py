@@ -9,6 +9,7 @@ import configparser
 import logging
 import os
 import random
+
 import numpy as np
 
 from helper import utilty as util
@@ -18,7 +19,22 @@ INTERPOLATED_IMAGE_DIR = "interpolated"
 TRUE_IMAGE_DIR = "true"
 
 
-def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True, print_console=True):
+def build_image_set(file_path, channels=1, scale=1, convert_ycbcr=True, resampling_method="bicubic",
+                    print_console=True):
+	true_image = util.set_image_alignment(util.load_image(file_path, print_console=print_console), scale)
+
+	if channels == 1 and true_image.shape[2] == 3:
+		true_image = util.convert_rgb_to_y(true_image)
+
+	input_image = build_input_image(true_image, channels=channels, scale=scale, alignment=scale,
+	                                convert_ycbcr=convert_ycbcr)
+	input_interpolated_image = util.resize_image_by_pil(input_image, scale, resampling_method=resampling_method)
+
+	return true_image, input_image, input_interpolated_image
+
+
+def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True,
+                     print_console=True):
 	image = util.load_image(filename, print_console=print_console)
 	return build_input_image(image, width, height, channels, scale, alignment, convert_ycbcr)
 
@@ -34,9 +50,6 @@ def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0
 			x = (image.shape[1] - width) // 2
 			y = (image.shape[0] - height) // 2
 			image = image[y: y + height, x: x + width, :]
-
-	if image.shape[2] >= 4:
-		image = image[:, :, 0:3]
 
 	if alignment > 1:
 		image = util.set_image_alignment(image, alignment)
@@ -116,15 +129,6 @@ class DataSet:
 			del self.hr_images
 		self.hr_images = None
 
-	def load_test_image(self, filename):
-
-		image = load_input_image(filename, channels=self.channels, scale=1, alignment=self.alignment,
-		                         print_console=False)
-		if self.max_value != 255.0:
-			image = np.multiply(image, self.max_value / 255.0)
-
-		return image
-
 	def load_input_image(self, filename, rescale=False, model=None, resampling_method="bicubic"):
 
 		image = load_input_image(filename, channels=self.channels, scale=self.scale, alignment=self.alignment,
@@ -176,9 +180,8 @@ class DataSet:
 		print("Finished")
 
 
-class DataSets:
-	def __init__(self, scale, batch_image_size, stride_size, channels=1,
-	             max_value=255.0, resampling_method="bicubic"):
+class BatchDataSets:
+	def __init__(self, scale, batch_dir, batch_image_size, stride_size=0, channels=1, resampling_method="bicubic"):
 
 		self.scale = scale
 		self.batch_image_size = batch_image_size
@@ -187,37 +190,16 @@ class DataSets:
 		else:
 			self.stride = stride_size
 		self.channels = channels
-		self.max_value = max_value
 		self.resampling_method = resampling_method
-
-		self.input = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, max_value=max_value)
-		self.true = DataSet(batch_image_size, channels=channels, scale=scale, alignment=scale, max_value=max_value)
-
-		self.filenames = []
-		self.file_counts = 0
-
-	def alloc_images(self, image_count):
-
-		self.input.release_images()
-		self.true.release_images()
-
-		self.input.images = np.zeros(
-			shape=[image_count, self.batch_image_size, self.batch_image_size, 1])  # type: np.ndarray
-		self.input.hr_images = np.zeros(
-			shape=[image_count, self.batch_image_size * self.scale, self.batch_image_size * self.scale,
-			       1])  # type: np.ndarray
-		self.input.count = image_count
-
-		self.true.images = None
-		self.true.hr_images = np.zeros(
-			shape=[image_count, self.batch_image_size * self.scale, self.batch_image_size * self.scale,
-			       1])  # type: np.ndarray
-		self.true.count = image_count
+		self.count = 0
+		self.batch_dir = batch_dir
+		self.batch_index = None
 
 	def build_batch(self, data_dir, batch_dir):
-		""" load from input files. Then save batch images on file to reduce memory consumption. """
+		""" Build batch images and. """
 
 		print("Building batch images for %s..." % batch_dir)
+		util.make_dir(batch_dir)
 		filenames = util.get_files_in_directory(data_dir)
 		images_count = 0
 
@@ -231,9 +213,8 @@ class DataSets:
 			output_window_size = self.batch_image_size * self.scale
 			output_window_stride = self.stride * self.scale
 
-			input_image, input_interpolated_image = self.input.load_input_image(filename, rescale=True,
-			                                                                    resampling_method=self.resampling_method)
-			test_image = self.true.load_test_image(filename)
+			true_image, input_image, input_interpolated_image = build_image_set(filename, channels=self.channels,
+			                                                                    scale=self.scale, print_console=False)
 
 			# split into batch images
 			input_batch_images = util.get_split_images(input_image, self.batch_image_size, stride=self.stride)
@@ -243,13 +224,15 @@ class DataSets:
 				continue
 			input_count = input_batch_images.shape[0]
 
-			test_batch_images = util.get_split_images(test_image, output_window_size, stride=output_window_stride)
+			true_batch_images = util.get_split_images(true_image, output_window_size, stride=output_window_stride)
 
 			for i in range(input_count):
 				save_input_batch_image(batch_dir, images_count, input_batch_images[i])
 				save_interpolated_batch_image(batch_dir, images_count, input_interpolated_batch_images[i])
-				save_true_batch_image(batch_dir, images_count, test_batch_images[i])
+				save_true_batch_image(batch_dir, images_count, true_batch_images[i])
 				images_count += 1
+
+		self.count = images_count
 
 		print("%d mini-batch images are built(saved)." % images_count)
 
@@ -260,36 +243,18 @@ class DataSets:
 		config.set("batch", "batch_image_size", str(self.batch_image_size))
 		config.set("batch", "stride", str(self.stride))
 		config.set("batch", "channels", str(self.channels))
-		config.set("batch", "max_value", str(self.max_value))
 
 		with open(batch_dir + "/batch_images.ini", "w") as configfile:
 			config.write(configfile)
 
-	def load_batch(self, batch_dir):
+	def load_batch_counts(self, batch_dir):
 		""" load already built batch images. """
 
 		config = configparser.ConfigParser()
 		config.read(batch_dir + "/batch_images.ini")
 		count = config.getint("batch", "count")
 
-		self.input.load_batch_images(batch_dir, True, count)
-		self.true.load_batch_images(batch_dir, False, count)
-
-	def load_batch_image_count(self, batch_dir):
-		""" load already built batch images. """
-
-		config = configparser.ConfigParser()
-		config.read(batch_dir + "/batch_images.ini")
-		count = config.getint("batch", "count")
-
-		self.input.count = count
-		self.true.count = count
-
-	def load_batch_image(self, batch_dir, index, image_number):
-		self.input.images[index] = load_input_batch_image(batch_dir, image_number)
-		self.input.hr_images[index] = load_interpolated_batch_image(batch_dir, image_number)
-
-		self.true.hr_images[index] = load_true_batch_image(batch_dir, image_number)
+		self.count = count
 
 	def is_batch_exist(self, batch_dir):
 		if not os.path.isdir(batch_dir):
@@ -311,31 +276,75 @@ class DataSets:
 				return False
 			if config.getint("batch", "channels") != self.channels:
 				return False
-			if config.getfloat("batch", "max_value") != self.max_value:
-				return False
 
 			return True
 
 		except IOError:
 			return False
 
+	def init_batch_index(self):
+		self.batch_index = random.sample(range(0, self.count), self.count)
+
+	def load_batch_image(self, index):
+
+		index = index % self.count
+		image_number = self.batch_index[index]
+
+		input = load_input_batch_image(self.batch_dir, image_number)
+		input_interpolated = load_interpolated_batch_image(self.batch_dir, image_number)
+		true = load_true_batch_image(self.batch_dir, image_number)
+
+		return input, input_interpolated, true
+
+class DynamicDataSets:
+	def __init__(self, scale, batch_image_size, channels=1, resampling_method="bicubic"):
+
+		self.scale = scale
+		self.batch_image_size = batch_image_size
+		self.channels = channels
+		self.resampling_method = resampling_method
+
+		self.filenames = []
+		self.count = 0
+		self.batch_index = None
+
 	def set_data_dir(self, data_dir):
 		self.filenames = util.get_files_in_directory(data_dir)
-		self.file_counts = len(self.filenames)
-		if self.file_counts <= 0:
+		self.count = len(self.filenames)
+		if self.count <= 0:
 			logging.error("Data Directory is empty.")
 			exit(-1)
 
-def load_random_patch(filename, patch_width, patch_height):
-	image = util.load_image(filename, print_console=False)
-	height, width = image.shape[0:2]
+	def init_batch_index(self):
+		self.batch_index = random.sample(range(0, self.count), self.count)
 
-	if height < patch_height or width < patch_width:
-		return None
+	def load_batch_image(self, index):
 
-	y = random.randrange(height - patch_height)
-	x = random.randrange(width - patch_width)
-	image = image[y:y + patch_height, x:x + patch_width, :]
-	image = build_input_image(image, convert_ycbcr=True)
+		image = None
+		image_no = index % self.count
+		while image is None:
+			image = self.load_random_patch(self.filenames[image_no])
+			image_no = random.randrange(self.count)
 
-	return image
+		if random.randrange(2) == 0:
+			image = np.fliplr(image)
+
+		input_image = util.resize_image_by_pil(image, 1 / self.scale)
+		input_bicubic_image = util.resize_image_by_pil(input_image, self.scale)
+		return input_image, input_bicubic_image, image
+
+	def load_random_patch(self, filename):
+
+		image = util.load_image(filename, print_console=False)
+		height, width = image.shape[0:2]
+
+		load_batch_size = self.batch_image_size * self.scale
+		if height < load_batch_size or width < load_batch_size:
+			return None
+
+		y = random.randrange(height - load_batch_size)
+		x = random.randrange(width - load_batch_size)
+		image = image[y:y + load_batch_size, x:x + load_batch_size, :]
+		image = build_input_image(image, channels=self.channels, convert_ycbcr=True)
+
+		return image

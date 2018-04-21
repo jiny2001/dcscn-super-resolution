@@ -242,6 +242,10 @@ def load_image(filename, width=0, height=0, channels=0, alignment=0, print_conso
 	if alignment != 0 and ((width % alignment) != 0 or (height % alignment) != 0):
 		raise LoadError("Attributes mismatch")
 
+	# if there is alpha plane, cut it
+	if image.shape[2] >= 4:
+		image = image[:, :, 0:3]
+
 	if print_console:
 		print("Loaded [%s]: %d x %d x %d" % (filename, image.shape[1], image.shape[0], image.shape[2]))
 	return image
@@ -270,6 +274,7 @@ def get_split_images(image, window_size, stride=None, enable_duplicate=False):
 
 	window_size = int(window_size)
 	size = image.itemsize  # byte size of each value
+	print(image.shape)
 	height, width = image.shape
 	if stride is None:
 		stride = window_size
@@ -447,7 +452,8 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 
 	loss_image = np.multiply(np.square(np.subtract(image1, image2)), scale)
 	loss_image = np.minimum(loss_image, 255.0)
-	loss_image = loss_image[border_size:-border_size, border_size:-border_size, :]
+	if border_size > 0:
+		loss_image = loss_image[border_size:-border_size, border_size:-border_size, :]
 
 	return loss_image
 

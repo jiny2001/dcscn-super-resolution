@@ -13,26 +13,27 @@ import tensorflow as tf
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-# Model
+# Model (network) Parameters
+flags.DEFINE_integer("scale", 2, "Scale factor for Super Resolution (should be 2 or more)")
 flags.DEFINE_integer("layers", 12, "Number of layers of CNNs")
 flags.DEFINE_integer("filters", 196, "Number of CNN filters")
 flags.DEFINE_integer("min_filters", 48, "Number of the last CNN filters")
+flags.DEFINE_float("filters_decay_gamma", 1.5, "Number of CNN filters are decayed from [filters] to [min_filters] by this gamma")
+flags.DEFINE_boolean("use_nin", True, "Use Network In Network")
 flags.DEFINE_integer("nin_filters", 64, "Number of CNN filters in A1 at Reconstruction network")
 flags.DEFINE_integer("nin_filters2", 32, "Number of CNN filters in B1 and B2 at Reconstruction net.")
 flags.DEFINE_integer("cnn_size", 3, "Size of CNN filters")
 flags.DEFINE_integer("reconstruct_layers", 1, "Number of Reconstruct CNN Layers. Should be larger than 1")
 flags.DEFINE_integer("reconstruct_filters", 32, "Number of Reconstruct CNN Filters")
-flags.DEFINE_boolean("use_nin", True, "Use Network In Network")
-flags.DEFINE_boolean("bicubic_init", True, "make bicubic interpolation values as initial input of x2")
 flags.DEFINE_float("dropout_rate", 0.8, "dropout value. Don't use if it's 1.0.")
 flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, prelu, sigmoid, tanh]")
-flags.DEFINE_float("filters_decay_gamma", 1.5, "Gamma")
-flags.DEFINE_boolean("batch_norm", False, "batch normalization")
-flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler insted of using transposed CNN")
+flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler instead of transposed CNN")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
-flags.DEFINE_float("clipping_norm", 5, "Norm for gradient clipping")
+flags.DEFINE_boolean("batch_norm", False, "use batch normalization after each CNNs")
 
-# Training
+# Training Parameters
+flags.DEFINE_boolean("bicubic_init", True, "make bicubic interpolation values as initial input for x2")
+flags.DEFINE_float("clipping_norm", 5, "Norm for gradient clipping")
 flags.DEFINE_string("initializer", "he", "Initializer for weights can be [uniform, stddev, xavier, he, identity, zero]")
 flags.DEFINE_float("weight_dev", 0.01, "Initial weight stddev (won't be used when you use he or xavier initializer)")
 flags.DEFINE_float("l2_decay", 0.0001, "l2_decay")
@@ -43,13 +44,13 @@ flags.DEFINE_float("momentum", 0.9, "Momentum for momentum optimizer and rmsprop
 flags.DEFINE_integer("batch_num", 20, "Number of mini-batch images for training")
 flags.DEFINE_integer("batch_image_size", 48, "Image size for mini-batch")
 flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, use half of batch_image_size")
+flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
 
 # Learning Rate Control for Training
 flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 9, "")
 flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
-flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
 
 # Dataset or Others
 flags.DEFINE_string("dataset", "bsd200", "Training dataset dir. [yang91, general100, bsd200, other]")
@@ -58,10 +59,10 @@ flags.DEFINE_integer("tests", 1, "Number of training sets")
 flags.DEFINE_boolean("do_benchmark", False, "Evaluate the performance for set5, set14 and bsd100 after the training.")
 
 # Image Processing
-flags.DEFINE_integer("scale", 2, "Scale factor for Super Resolution (can be 2 or more)")
 flags.DEFINE_float("max_value", 255, "For normalize image pixel value")
-flags.DEFINE_integer("channels", 1, "Number of image channels used. Use only Y of YCbCr when channels=1.")
+flags.DEFINE_integer("channels", 1, "Number of image channels used. Now it should be 1. using only Y from YCbCr.")
 flags.DEFINE_integer("psnr_calc_border_size", -1, "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
+flags.DEFINE_boolean("build_batch", True, "Build pre-processed input batch. Makes training significantly faster but the patches are limited to be on the grid.")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")

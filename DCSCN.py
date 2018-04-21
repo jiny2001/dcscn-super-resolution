@@ -27,6 +27,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		super().__init__(flags)
 
 		# Model Parameters
+		self.scale = flags.scale
 		self.layers = flags.layers
 		self.filters = flags.filters
 		self.min_filters = min(flags.filters, flags.min_filters)
@@ -65,7 +66,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.test = None
 
 		# Image Processing Parameters
-		self.scale = flags.scale
 		self.max_value = flags.max_value
 		self.channels = flags.channels
 		self.output_channels = 1
@@ -133,17 +133,13 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		return name
 
-	def load_dynamic_datasets(self, data_dir, batch_image_size, stride_size=0):
+	def load_dynamic_datasets(self, data_dir, batch_image_size):
 		""" loads datasets
 		Opens image directory as a datasets. Images will be loaded when build_input_batch() is called.
 		"""
 
-		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           max_value=self.max_value, resampling_method=self.resampling_method)
-
-		datasets.set_data_dir(data_dir)
-
-		return datasets
+		self.train = loader.DynamicDataSets(self.scale, batch_image_size, channels=self.channels, resampling_method=self.resampling_method)
+		self.train.set_data_dir(data_dir)
 
 	def load_datasets(self, data_dir, batch_dir, batch_image_size, stride_size=0):
 		""" build input patch images and loads as a datasets
@@ -155,31 +151,15 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		"""
 
 		batch_dir += "/scale%d" % self.scale
-		print("Loading datasets for [%s]..." % batch_dir)
-		util.make_dir(batch_dir)
 
-		datasets = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                           max_value=self.max_value, resampling_method=self.resampling_method)
-
-		if not datasets.is_batch_exist(batch_dir):
-			datasets.build_batch(data_dir, batch_dir)
-		datasets.load_batch(batch_dir)
-
-		return datasets
-
-	def build_training_datasets(self, data_dir, batch_dir, batch_image_size, stride_size=0):
-
-		print("Building datasets for [%s]..." % "train")
-		util.make_dir(batch_dir)
-
-		if stride_size == 0:
-			stride_size = batch_image_size // 2
-
-		self.train = loader.DataSets(self.scale, batch_image_size, stride_size, channels=self.channels,
-		                             max_value=self.max_value, resampling_method=self.resampling_method)
+		self.train = loader.BatchDataSets(self.scale, batch_dir, batch_image_size, stride_size, channels=self.channels,
+		                           resampling_method=self.resampling_method)
 
 		if not self.train.is_batch_exist(batch_dir):
 			self.train.build_batch(data_dir, batch_dir)
+		else:
+			self.train.load_batch_counts(batch_dir)
+
 
 	def init_epoch_index(self):
 
@@ -187,28 +167,18 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.batch_input_bicubic = self.batch_num * [None]
 		self.batch_true = self.batch_num * [None]
 
-		self.batch_index = random.sample(range(0, self.train.input.count), self.train.input.count)
 		self.steps_in_epoch = 0
 		self.training_psnr_sum = 0
 		self.training_mse_sum = 0
 		self.training_step = 0
+		self.train.init_batch_index()
 
 	def build_input_batch(self):
 
 		for i in range(self.batch_num):
-			image = None
-			while image is None:
-				image_no = random.randrange(self.train.file_counts)
-				image = loader.load_random_patch(self.train.filenames[image_no],
-				                                 self.batch_image_size * self.scale,
-				                                 self.batch_image_size * self.scale)
+			self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] =\
+				self.train.load_batch_image(self.steps_in_epoch)
 
-			if random.randrange(2) == 0:
-				image = np.fliplr(image)
-
-			self.batch_input[i] = util.resize_image_by_pil(image, 1 / self.scale)
-			self.batch_input_bicubic[i] = util.resize_image_by_pil(self.batch_input[i], self.scale)
-			self.batch_true[i] = image
 			self.steps_in_epoch += 1
 
 	def build_graph(self):
@@ -259,6 +229,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="Concat2"))
 			input_channels = self.nin_filters + self.nin_filters2
 		else:
+			self.H.append(self.H_concat)
 			input_channels = total_output_feature_num
 
 		# building upsampling layer
@@ -714,7 +685,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		status = "Finished at Total Epoch:%d Steps:%s Time:%02d:%02d:%02d (%2.3fsec/step) %d x %d x %d patches" % (
 			self.epochs_completed, "{:,}".format(self.step), h, m, s, processing_time,
-			self.batch_image_size, self.batch_image_size, self.train.input.count)
+			self.batch_image_size, self.batch_image_size, self.training_image_count)
 
 		if output_to_logging:
 			logging.info(status)
