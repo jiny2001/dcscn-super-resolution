@@ -116,3 +116,5 @@ ENV/
 log\.txt
 
 tf_log_archive/
+
+data/yang_bsd/

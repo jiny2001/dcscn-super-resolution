@@ -209,6 +209,7 @@ class BatchDataSets:
 		util.make_dir(batch_dir + "/" + INTERPOLATED_IMAGE_DIR)
 		util.make_dir(batch_dir + "/" + TRUE_IMAGE_DIR)
 
+		processed_images = 0
 		for filename in filenames:
 			output_window_size = self.batch_image_size * self.scale
 			output_window_stride = self.stride * self.scale
@@ -231,7 +232,11 @@ class BatchDataSets:
 				save_interpolated_batch_image(batch_dir, images_count, input_interpolated_batch_images[i])
 				save_true_batch_image(batch_dir, images_count, true_batch_images[i])
 				images_count += 1
+			processed_images +=1
+			if processed_images % 10 == 0:
+				print('.', end='', flush=True)
 
+		print("Finished")
 		self.count = images_count
 
 		print("%d mini-batch images are built(saved)." % images_count)

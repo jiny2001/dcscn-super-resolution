@@ -274,7 +274,6 @@ def get_split_images(image, window_size, stride=None, enable_duplicate=False):
 
 	window_size = int(window_size)
 	size = image.itemsize  # byte size of each value
-	print(image.shape)
 	height, width = image.shape
 	if stride is None:
 		stride = window_size
