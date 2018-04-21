@@ -3,7 +3,7 @@ Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connectio
 Author: Jin Yamanaka
 Github: https://github.com/jiny2001/dcscn-image-super-resolution
 
-Creating Augmented training images
+Create Augmented training images
 
 Put your images under data/[your dataset name]/ and specify [your dataset name] for --dataset.
 

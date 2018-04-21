@@ -261,6 +261,22 @@ class BatchDataSets:
 
 		self.count = count
 
+	def load_all_batch_images(self):
+
+		print("Allocating memory for all batch images...")
+		self.input_images = np.zeros(shape=[self.count, self.batch_image_size, self.batch_image_size, 1])  # type: np.ndarray
+		self.input_interpolated_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1])  # type: np.ndarray
+		self.true_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1])  # type: np.ndarray
+
+		print("Loading all batch images...")
+		for i in range(self.count):
+			self.input_images[i] = load_input_batch_image(self.batch_dir, i)
+			self.input_interpolated_images[i] = load_interpolated_batch_image(self.batch_dir, i)
+			self.true_images[i] = load_true_batch_image(self.batch_dir, i)
+			if i % 100 == 0:
+				print('.', end='', flush=True)
+
+
 	def is_batch_exist(self, batch_dir):
 		if not os.path.isdir(batch_dir):
 			return False
@@ -290,7 +306,7 @@ class BatchDataSets:
 	def init_batch_index(self):
 		self.batch_index = random.sample(range(0, self.count), self.count)
 
-	def load_batch_image(self, index):
+	def load_batch_image_from_disk(self, index):
 
 		index = index % self.count
 		image_number = self.batch_index[index]
@@ -300,6 +316,14 @@ class BatchDataSets:
 		true = load_true_batch_image(self.batch_dir, image_number)
 
 		return input, input_interpolated, true
+
+	def load_batch_image(self, index):
+
+		index = index % self.count
+		number = self.batch_index[index]
+
+		return self.input_images[number], self.input_interpolated_images[number], self.true_images[number]
+
 
 class DynamicDataSets:
 	def __init__(self, scale, batch_image_size, channels=1, resampling_method="bicubic"):

@@ -159,7 +159,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			self.train.build_batch(data_dir, batch_dir)
 		else:
 			self.train.load_batch_counts(batch_dir)
-
+		self.train.load_all_batch_images()
 
 	def init_epoch_index(self):
 

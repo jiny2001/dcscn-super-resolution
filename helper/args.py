@@ -62,7 +62,7 @@ flags.DEFINE_boolean("do_benchmark", False, "Evaluate the performance for set5, 
 flags.DEFINE_float("max_value", 255, "For normalize image pixel value")
 flags.DEFINE_integer("channels", 1, "Number of image channels used. Now it should be 1. using only Y from YCbCr.")
 flags.DEFINE_integer("psnr_calc_border_size", -1, "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
-flags.DEFINE_boolean("build_batch", True, "Build pre-processed input batch. Makes training significantly faster but the patches are limited to be on the grid.")
+flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Makes training significantly faster but the patches are limited to be on the grid.")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")
