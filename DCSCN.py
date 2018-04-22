@@ -11,8 +11,8 @@ If you want to check original source code and results of the paper, please see h
 
 import logging
 import numpy as np
+import math
 import os
-import random
 import tensorflow as tf
 import time
 
@@ -61,7 +61,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.lr_decay_epoch = flags.lr_decay_epoch
 
 		# Dataset or Others
-		self.training_image_count = max(1, (flags.training_images // flags.batch_num)) * flags.batch_num
+		self.training_images = int(math.ceil(flags.training_images / flags.batch_num)*flags.batch_num)
 		self.train = None
 		self.test = None
 
@@ -167,7 +167,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.batch_input_bicubic = self.batch_num * [None]
 		self.batch_true = self.batch_num * [None]
 
-		self.steps_in_epoch = 0
 		self.training_psnr_sum = 0
 		self.training_mse_sum = 0
 		self.training_step = 0
@@ -177,9 +176,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		for i in range(self.batch_num):
 			self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] =\
-				self.train.load_batch_image(self.steps_in_epoch)
+				self.train.load_batch_image()
 
-			self.steps_in_epoch += 1
 
 	def build_graph(self):
 
@@ -474,7 +472,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
 				util.get_now_date(), "{:,}".format(self.step), mse, psnr, self.training_psnr_sum / self.training_step)
 			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (
-				self.training_image_count // self.batch_num)
+				self.training_images // self.batch_num)
 			h = estimated // (60 * 60)
 			estimated -= h * 60 * 60
 			m = estimated // 60
@@ -685,7 +683,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		status = "Finished at Total Epoch:%d Steps:%s Time:%02d:%02d:%02d (%2.3fsec/step) %d x %d x %d patches" % (
 			self.epochs_completed, "{:,}".format(self.step), h, m, s, processing_time,
-			self.batch_image_size, self.batch_image_size, self.training_image_count)
+			self.batch_image_size, self.batch_image_size, self.training_images)
 
 		if output_to_logging:
 			logging.info(status)

@@ -74,7 +74,7 @@ def train(model, flags, trial, load_model_name=""):
 		model.build_input_batch()
 		model.train_batch()
 
-		if model.steps_in_epoch >= model.training_image_count:
+		if model.training_step * model.batch_num >= model.training_images:
 
 			# training epoch finished
 			model.epochs_completed += 1

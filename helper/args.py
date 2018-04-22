@@ -15,9 +15,9 @@ FLAGS = flags.FLAGS
 
 # Model (network) Parameters
 flags.DEFINE_integer("scale", 2, "Scale factor for Super Resolution (should be 2 or more)")
-flags.DEFINE_integer("layers", 12, "Number of layers of CNNs")
-flags.DEFINE_integer("filters", 196, "Number of CNN filters")
-flags.DEFINE_integer("min_filters", 48, "Number of the last CNN filters")
+flags.DEFINE_integer("layers", 12, "Number of layers of feature xxtraction CNNs")
+flags.DEFINE_integer("filters", 196, "Number of filters of first feature-extraction CNNs")
+flags.DEFINE_integer("min_filters", 48, "Number of filters of last feature-extraction CNNs")
 flags.DEFINE_float("filters_decay_gamma", 1.5, "Number of CNN filters are decayed from [filters] to [min_filters] by this gamma")
 flags.DEFINE_boolean("use_nin", True, "Use Network In Network")
 flags.DEFINE_integer("nin_filters", 64, "Number of CNN filters in A1 at Reconstruction network")
@@ -25,7 +25,7 @@ flags.DEFINE_integer("nin_filters2", 32, "Number of CNN filters in B1 and B2 at 
 flags.DEFINE_integer("cnn_size", 3, "Size of CNN filters")
 flags.DEFINE_integer("reconstruct_layers", 1, "Number of Reconstruct CNN Layers. Should be larger than 1")
 flags.DEFINE_integer("reconstruct_filters", 32, "Number of Reconstruct CNN Filters")
-flags.DEFINE_float("dropout_rate", 0.8, "dropout value. Don't use if it's 1.0.")
+flags.DEFINE_float("dropout_rate", 0.8, "Output nodes should be kept by this probability. If 1, don't use dropout.")
 flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, prelu, sigmoid, tanh]")
 flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler instead of transposed CNN")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
@@ -47,7 +47,7 @@ flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, 
 flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
 
 # Learning Rate Control for Training
-flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
+flags.DEFINE_float("initial_lr", 0.001, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
 flags.DEFINE_integer("lr_decay_epoch", 9, "")
 flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")

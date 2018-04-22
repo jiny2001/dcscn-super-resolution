@@ -54,7 +54,7 @@ Results and model will be uploaded in some days!!
 
 Learned weights for some parameters are included in this GitHub. Execute **evaluate.py** with these args below and you get results in **output** directory. When you want to evaluate with other parameters, try training first then evaluate with same parameters as training have done. Results will be logged at log.txt, please check.
 
-Three pre-trained models (compact, normal, large) are included.
+Some pre-trained models are included.
 
 ```
 # evaluating set14 dataset
@@ -95,23 +95,33 @@ python train.py --dataset bsd200 --training_images 80000
 python train.py --dataset bsd200 --layers 7 --filters 64 --training_images 40000
 ```
 
-Important parameters are those.
+Please note loading/converting batch images for each training is a bit heavy process since there will be a lot of iterations. Here are some options. You can use those option to reduce training time significantly.
+
+1. Use convert_y.py to convert your dataset images to Y-channel monochrome bitmap.
+If your training data is compressed like PNG or jpeg and the image resolution is larger, you must convert it before. Especially for DIV2K dataset, you can save a big time for decompressing and converting image process.
+Also in this mode, each input batch image may be flipped horizontally by the probability of 50%.
+
+2. Use --build_batch True option for smaller dataset
+If your dataset is small enough to store in CPU memory, please use this. It will build a batch images before the training. When you're using HDD(not SSD) and the dataset is not large like (Yang91 + BSD200) augmented by 8 methods, this option can avoid loading/converting process for each batch.
+In this case, batch image positions are adjusted and limited to be on the grid with the half of batch_image_size. However, as far as I experimented, that doesn't affect to PSNR performance so much.
+
+# Important parameters
 
 | Parameter arg | Name | Default | Explanation |
 |:-------:|:-------:|:----:|:----:|
-| layers |  |  |  |
-| filters |  |  |  |
-| filters_decay_gamma |  |  |  |
-| pixel_shuffler |  |  |  |
-| self_ensemble |  |  |  |
+| layers | Num CNN layers | 12 | Number of layers of feature-extraction CNNs |
+| filters | Num of first CNN filters | 196 | Number of filters of first feature-extraction CNNs |
+| min_filters | Num of last CNN filters | 196 | Number of filters of last feature-extraction CNNs |
+| filters_decay_gamma | Decay Gamma | 1.5 | Number of CNN filters are decayed from [filters] to [min_filters] by this gamma on each layers |
+| pixel_shuffler | Pixel Shuffler | True | Use Pixel Shuffler as up-sampling layer. If it's False, use transposed CNN as up-sampling layer. |
+| self_ensemble | Self Ensemble | 8 | Apply SR for 1-8 flipped/rotate images and then use mean image as result. |
 | training_images | Batch images for training epoch | 24000 | This number of batch images are used for training one epoch. I usually use 100,000 batch images for each 10 epochs for each Learning Rate. |
-| dropout_rate |  |  |  |
-| initializer |  |  |  |
-| activator |  |  |  |
-| optimizer |  |  |  |
-| batch_image_size |  |  |  |
-| batch_num |  |  |  |
-
+| dropout_rate | Dropout rate | 0.8 | Output nodes should be kept by this probability. Should be 1 >= drop out > 0. If 1, don't use dropout. |
+| initializer | Initialize method | he | Initialize method of each weight. Can be one of [uniform, stddev, xavier, he, identity, zero]. |
+| activator | Activator function | prelu | Type of activator functions for each CNN. Can be one of [relu, leaky_relu, prelu, sigmoid, tanh] |
+| optimizer | Optimizer function | adam | Method of optimizer. Can be one of [gd, momentum, adadelta, adagrad, adam, rmsprop] |
+| batch_image_size | Image size for each Batch | 48 | Each training image will be splitted this size. |
+| batch_num | Image num for each batch | 20 | Number of batch images for one training step. |
 
 
 ## Data augmentation
@@ -131,10 +141,16 @@ python augmentation.py --dataset yang91 --augment_level 8
 python train.py --dataset yang91_4
 ```
 
+## How to calculate PSNR
+
+RGB image is converted to YCbCr image. And then trained and applied only for Y channel.
+
+For PSNR, by the default, result and original image are cropped by the border size = (2 + scale) and then MSE and PSNR are calculated.
+
 
 ## Visualization
 
-During the training, tensorboard log is available. Those are logged under **tf_log** directory.
+During the training, tensorboard log is available, logged under **tf_log** directory.
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/model_v2.png" width="400">
 

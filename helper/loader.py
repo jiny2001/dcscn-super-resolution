@@ -9,8 +9,9 @@ import configparser
 import logging
 import os
 import random
-from scipy import misc
+
 import numpy as np
+from scipy import misc
 
 from helper import utilty as util
 
@@ -68,18 +69,19 @@ def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0
 
 
 def load_input_batch_image(batch_dir, image_number):
-#	return util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+	#	return util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
 	image = misc.imread(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number)
-	return image.reshape(image.shape[0], image.shape[1],1)
+	return image.reshape(image.shape[0], image.shape[1], 1)
+
 
 def load_interpolated_batch_image(batch_dir, image_number):
-#	return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+	#	return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
 	image = misc.imread(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number)
 	return image.reshape(image.shape[0], image.shape[1], 1)
 
 
 def load_true_batch_image(batch_dir, image_number):
-#	return util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
+	#	return util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
 	image = misc.imread(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number)
 	return image.reshape(image.shape[0], image.shape[1], 1)
 
@@ -94,95 +96,6 @@ def save_interpolated_batch_image(batch_dir, image_number, image):
 
 def save_true_batch_image(batch_dir, image_number, image):
 	return util.save_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-
-
-def get_batch_count(batch_dir):
-	if not os.path.isdir(batch_dir):
-		return 0
-
-	config = configparser.ConfigParser()
-	try:
-		with open(batch_dir + "/batch_images.ini") as f:
-			config.read_file(f)
-		return config.getint("batch", "count")
-
-	except IOError:
-		return 0
-
-
-class DataSet:
-	def __init__(self, batch_image_size, channels=1, scale=1, max_value=255.0, alignment=0):
-
-		self.batch_image_size = batch_image_size
-		self.max_value = max_value
-		self.channels = channels
-		self.scale = scale
-		self.max_value = max_value
-		self.alignment = alignment
-
-		self.count = 0
-		self.images = None
-		self.hr_images = None
-
-	def release_images(self):
-
-		if hasattr(self, 'images'):
-			del self.images
-		self.images = None
-
-		if hasattr(self, 'hr_images'):
-			del self.hr_images
-		self.hr_images = None
-
-	def load_input_image(self, filename, rescale=False, model=None, resampling_method="bicubic"):
-
-		image = load_input_image(filename, channels=self.channels, scale=self.scale, alignment=self.alignment,
-		                         print_console=True)
-		if self.max_value != 255.0:
-			image = np.multiply(image, self.max_value / 255.0)
-
-		if rescale:
-			if model is not None:
-				rescaled_image = model.do(image)
-			else:
-				rescaled_image = util.resize_image_by_pil(image, self.scale, resampling_method=resampling_method)
-
-			return image, rescaled_image
-		else:
-			return image
-
-	def load_batch_images(self, batch_dir, is_input, count):
-
-		self.release_images()
-
-		if is_input:
-			print("Allocate memories for %d * %d^2 + %d * %d^2" % (
-				count, self.batch_image_size, count, self.batch_image_size * self.scale))
-		else:
-			print("Allocate memories for %d * %d^2" % (
-				count, self.batch_image_size * self.scale))
-		print("Loading %d batch images from %s for [%s]..." % (count, batch_dir, "input" if is_input else "true"))
-
-		self.count = count
-		if is_input:
-			self.images = np.zeros(shape=[count, self.batch_image_size, self.batch_image_size, 1])  # type: np.ndarray
-		else:
-			self.images = None
-		self.hr_images = np.zeros(
-			shape=[count, self.batch_image_size * self.scale, self.batch_image_size * self.scale,
-			       1])  # type: np.ndarray
-
-		for i in range(count):
-			if is_input:
-				self.images[i] = load_input_batch_image(batch_dir, i)
-				self.hr_images[i] = load_interpolated_batch_image(batch_dir, i)
-			else:
-				self.hr_images[i] = load_true_batch_image(batch_dir, i)
-
-			if i % 1000 == 0:
-				print('.', end='', flush=True)
-
-		print("Finished")
 
 
 class BatchDataSets:
@@ -237,7 +150,7 @@ class BatchDataSets:
 				save_interpolated_batch_image(batch_dir, images_count, input_interpolated_batch_images[i])
 				save_true_batch_image(batch_dir, images_count, true_batch_images[i])
 				images_count += 1
-			processed_images +=1
+			processed_images += 1
 			if processed_images % 10 == 0:
 				print('.', end='', flush=True)
 
@@ -260,18 +173,31 @@ class BatchDataSets:
 	def load_batch_counts(self, batch_dir):
 		""" load already built batch images. """
 
-		config = configparser.ConfigParser()
-		config.read(batch_dir + "/batch_images.ini")
-		count = config.getint("batch", "count")
+		if not os.path.isdir(batch_dir):
+			self.count = 0
+			return
 
-		self.count = count
+		config = configparser.ConfigParser()
+		try:
+			with open(batch_dir + "/batch_images.ini") as f:
+				config.read_file(f)
+			self.count = config.getint("batch", "count")
+
+		except IOError:
+			self.count = 0
+			return
 
 	def load_all_batch_images(self):
 
 		print("Allocating memory for all batch images...")
-		self.input_images = np.zeros(shape=[self.count, self.batch_image_size, self.batch_image_size, 1],dtype=np.int8)  # type: np.ndarray
-		self.input_interpolated_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1],dtype=np.int8)  # type: np.ndarray
-		self.true_images = np.zeros(shape=[self.count, self.batch_image_size*self.scale, self.batch_image_size*self.scale, 1],dtype=np.int8)  # type: np.ndarray
+		self.input_images = np.zeros(shape=[self.count, self.batch_image_size, self.batch_image_size, 1],
+		                             dtype=np.int8)  # type: np.ndarray
+		self.input_interpolated_images = np.zeros(
+			shape=[self.count, self.batch_image_size * self.scale, self.batch_image_size * self.scale, 1],
+			dtype=np.int8)  # type: np.ndarray
+		self.true_images = np.zeros(
+			shape=[self.count, self.batch_image_size * self.scale, self.batch_image_size * self.scale, 1],
+			dtype=np.int8)  # type: np.ndarray
 
 		print("Loading all batch images...")
 		for i in range(self.count):
@@ -281,6 +207,19 @@ class BatchDataSets:
 			if i % 1000 == 0:
 				print('.', end='', flush=True)
 
+	def release_batch_images(self):
+
+		if hasattr(self, 'input_images'):
+			del self.input_images
+		self.input_images = None
+
+		if hasattr(self, 'input_interpolated_images'):
+			del self.input_interpolated_images
+		self.input_interpolated_images = None
+
+		if hasattr(self, 'true_images'):
+			del self.true_images
+		self.true_images = None
 
 	def is_batch_exist(self, batch_dir):
 		if not os.path.isdir(batch_dir):
@@ -310,23 +249,31 @@ class BatchDataSets:
 
 	def init_batch_index(self):
 		self.batch_index = random.sample(range(0, self.count), self.count)
+		self.index = 0
+
+	def get_next_image_no(self):
+
+		if self.index >= self.count:
+			self.init_batch_index()
+
+		image_no = self.batch_index[self.index]
+		self.index += 1
+		return image_no
 
 	def load_batch_image_from_disk(self, index):
 
 		index = index % self.count
 		image_number = self.batch_index[index]
 
-		input = load_input_batch_image(self.batch_dir, image_number)
+		input_image = load_input_batch_image(self.batch_dir, image_number)
 		input_interpolated = load_interpolated_batch_image(self.batch_dir, image_number)
 		true = load_true_batch_image(self.batch_dir, image_number)
 
-		return input, input_interpolated, true
+		return input_image, input_interpolated, true
 
-	def load_batch_image(self, index):
+	def load_batch_image(self):
 
-		index = index % self.count
-		number = self.batch_index[index]
-
+		number = self.get_next_image_no()
 		return self.input_images[number], self.input_interpolated_images[number], self.true_images[number]
 
 
@@ -351,14 +298,23 @@ class DynamicDataSets:
 
 	def init_batch_index(self):
 		self.batch_index = random.sample(range(0, self.count), self.count)
+		self.index = 0
 
-	def load_batch_image(self, index):
+	def get_next_image_no(self):
+
+		if self.index >= self.count:
+			self.init_batch_index()
+
+		image_no = self.batch_index[self.index]
+		self.index += 1
+		return image_no
+
+	def load_batch_image(self):
+		""" index won't be used. """
 
 		image = None
-		image_no = index % self.count
 		while image is None:
-			image = self.load_random_patch(self.filenames[image_no])
-			image_no = random.randrange(self.count)
+			image = self.load_random_patch(self.filenames[self.get_next_image_no()])
 
 		if random.randrange(2) == 0:
 			image = np.fliplr(image)

@@ -9,10 +9,8 @@ Put your images under data/[your dataset name]/ and specify [your dataset name] 
 
 
 """
-import numpy as np
 import os
 import tensorflow as tf
-
 from helper import args, utilty as util
 
 FLAGS = args.get()
