@@ -269,6 +269,7 @@ def load_image_data(filename, width=0, height=0, channels=0, alignment=0, print_
 
 
 def get_split_images(image, window_size, stride=None, enable_duplicate=False):
+
 	if len(image.shape) == 3 and image.shape[2] == 1:
 		image = image.reshape(image.shape[0], image.shape[1])
 

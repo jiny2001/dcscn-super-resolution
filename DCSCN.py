@@ -10,11 +10,12 @@ If you want to check original source code and results of the paper, please see h
 """
 
 import logging
-import numpy as np
 import math
 import os
-import tensorflow as tf
 import time
+
+import numpy as np
+import tensorflow as tf
 
 from helper import loader, tf_graph, utilty as util
 
@@ -61,7 +62,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.lr_decay_epoch = flags.lr_decay_epoch
 
 		# Dataset or Others
-		self.training_images = int(math.ceil(flags.training_images / flags.batch_num)*flags.batch_num)
+		self.training_images = int(math.ceil(flags.training_images / flags.batch_num) * flags.batch_num)
 		self.train = None
 		self.test = None
 
@@ -138,7 +139,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		Opens image directory as a datasets. Images will be loaded when build_input_batch() is called.
 		"""
 
-		self.train = loader.DynamicDataSets(self.scale, batch_image_size, channels=self.channels, resampling_method=self.resampling_method)
+		self.train = loader.DynamicDataSets(self.scale, batch_image_size, channels=self.channels,
+		                                    resampling_method=self.resampling_method)
 		self.train.set_data_dir(data_dir)
 
 	def load_datasets(self, data_dir, batch_dir, batch_image_size, stride_size=0):
@@ -153,12 +155,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		batch_dir += "/scale%d" % self.scale
 
 		self.train = loader.BatchDataSets(self.scale, batch_dir, batch_image_size, stride_size, channels=self.channels,
-		                           resampling_method=self.resampling_method)
+		                                  resampling_method=self.resampling_method)
 
-		if not self.train.is_batch_exist(batch_dir):
-			self.train.build_batch(data_dir, batch_dir)
+		if not self.train.is_batch_exist():
+			self.train.build_batch(data_dir)
 		else:
-			self.train.load_batch_counts(batch_dir)
+			self.train.load_batch_counts()
 		self.train.load_all_batch_images()
 
 	def init_epoch_index(self):
@@ -175,9 +177,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 	def build_input_batch(self):
 
 		for i in range(self.batch_num):
-			self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] =\
-				self.train.load_batch_image()
-
+			self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image()
 
 	def build_graph(self):
 
@@ -260,7 +260,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 
-#		with tf.variable_scope("CropDiff"):
+		#		with tf.variable_scope("CropDiff"):
 		diff = self.y_ - self.y
 		# if self.psnr_calc_border_size > 0:
 		# 	offset = self.psnr_calc_border_size

@@ -92,16 +92,22 @@ Each training and evaluation result will be added to **log.txt**.
 python train.py --dataset bsd200 --training_images 80000
 
 # training with small model
-python train.py --dataset bsd200 --layers 7 --filters 64 --training_images 40000
+python train.py --dataset bsd200 --layers 7 --filters 64 --training_images 30000
+
+# training with tiny model for test
+python train.py --dataset set5 --layers 5 --filters 32 --use_nin False --training_images 10000
+
+# training with transposed CNN instead of using Pixel Shuffler layer for up-sampling
+python train.py --dataset bsd200 --training_images 80000 --pixel_shuffler False
 ```
 
 Please note loading/converting batch images for each training is a bit heavy process since there will be a lot of iterations. Here are some options. You can use those option to reduce training time significantly.
 
-1. Use convert_y.py to convert your dataset images to Y-channel monochrome bitmap.
+1. Use "convert_y.py" to convert your dataset images to Y-channel monochrome bitmap.
 If your training data is compressed like PNG or jpeg and the image resolution is larger, you must convert it before. Especially for DIV2K dataset, you can save a big time for decompressing and converting image process.
 Also in this mode, each input batch image may be flipped horizontally by the probability of 50%.
 
-2. Use --build_batch True option for smaller dataset
+2. Use "--build_batch True" option for smaller dataset
 If your dataset is small enough to store in CPU memory, please use this. It will build a batch images before the training. When you're using HDD(not SSD) and the dataset is not large like (Yang91 + BSD200) augmented by 8 methods, this option can avoid loading/converting process for each batch.
 In this case, batch image positions are adjusted and limited to be on the grid with the half of batch_image_size. However, as far as I experimented, that doesn't affect to PSNR performance so much.
 
@@ -122,7 +128,9 @@ In this case, batch image positions are adjusted and limited to be on the grid w
 | optimizer | Optimizer function | adam | Method of optimizer. Can be one of [gd, momentum, adadelta, adagrad, adam, rmsprop] |
 | batch_image_size | Image size for each Batch | 48 | Each training image will be splitted this size. |
 | batch_num | Image num for each batch | 20 | Number of batch images for one training step. |
+| clipping_norm | value for gradient clipping | 5 | Norm for gradient clipping. If it's <= 0 we don't use gradient clipping. |
 
+( Also learning late and other model parameters are still important. Please check arg.py for other params. )
 
 ## Data augmentation
 

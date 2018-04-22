@@ -24,14 +24,13 @@ def build_image_set(file_path, channels=1, scale=1, convert_ycbcr=True, resampli
                     print_console=True):
 	true_image = util.set_image_alignment(util.load_image(file_path, print_console=print_console), scale)
 
-	if channels == 1 and true_image.shape[2] == 3:
+	if channels == 1 and true_image.shape[2] == 3 and convert_ycbcr:
 		true_image = util.convert_rgb_to_y(true_image)
 
-	input_image = build_input_image(true_image, channels=channels, scale=scale, alignment=scale,
-	                                convert_ycbcr=convert_ycbcr)
+	input_image = util.resize_image_by_pil(true_image, 1.0 / scale, resampling_method=resampling_method)
 	input_interpolated_image = util.resize_image_by_pil(input_image, scale, resampling_method=resampling_method)
 
-	return true_image, input_image, input_interpolated_image
+	return input_image, input_interpolated_image, true_image
 
 
 def load_input_image(filename, width=0, height=0, channels=1, scale=1, alignment=0, convert_ycbcr=True,
@@ -68,36 +67,6 @@ def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0
 	return image
 
 
-def load_input_batch_image(batch_dir, image_number):
-	#	return util.load_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
-	image = misc.imread(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number)
-	return image.reshape(image.shape[0], image.shape[1], 1)
-
-
-def load_interpolated_batch_image(batch_dir, image_number):
-	#	return util.load_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
-	image = misc.imread(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number)
-	return image.reshape(image.shape[0], image.shape[1], 1)
-
-
-def load_true_batch_image(batch_dir, image_number):
-	#	return util.load_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, print_console=False)
-	image = misc.imread(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number)
-	return image.reshape(image.shape[0], image.shape[1], 1)
-
-
-def save_input_batch_image(batch_dir, image_number, image):
-	return util.save_image(batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-
-
-def save_interpolated_batch_image(batch_dir, image_number, image):
-	return util.save_image(batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-
-
-def save_true_batch_image(batch_dir, image_number, image):
-	return util.save_image(batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
-
-
 class BatchDataSets:
 	def __init__(self, scale, batch_dir, batch_image_size, stride_size=0, channels=1, resampling_method="bicubic"):
 
@@ -113,42 +82,44 @@ class BatchDataSets:
 		self.batch_dir = batch_dir
 		self.batch_index = None
 
-	def build_batch(self, data_dir, batch_dir):
+	def build_batch(self, data_dir):
 		""" Build batch images and. """
 
-		print("Building batch images for %s..." % batch_dir)
-		util.make_dir(batch_dir)
+		print("Building batch images for %s..." % self.batch_dir)
 		filenames = util.get_files_in_directory(data_dir)
 		images_count = 0
 
-		util.make_dir(batch_dir)
-		util.clean_dir(batch_dir)
-		util.make_dir(batch_dir + "/" + INPUT_IMAGE_DIR)
-		util.make_dir(batch_dir + "/" + INTERPOLATED_IMAGE_DIR)
-		util.make_dir(batch_dir + "/" + TRUE_IMAGE_DIR)
+		util.make_dir(self.batch_dir)
+		util.clean_dir(self.batch_dir)
+		util.make_dir(self.batch_dir + "/" + INPUT_IMAGE_DIR)
+		util.make_dir(self.batch_dir + "/" + INTERPOLATED_IMAGE_DIR)
+		util.make_dir(self.batch_dir + "/" + TRUE_IMAGE_DIR)
 
 		processed_images = 0
 		for filename in filenames:
 			output_window_size = self.batch_image_size * self.scale
 			output_window_stride = self.stride * self.scale
 
-			true_image, input_image, input_interpolated_image = build_image_set(filename, channels=self.channels,
-			                                                                    scale=self.scale, print_console=False)
+			input_image, input_interpolated_image, true_image = \
+				build_image_set(filename, channels=self.channels, resampling_method=self.resampling_method,
+				                scale=self.scale, print_console=False)
 
 			# split into batch images
 			input_batch_images = util.get_split_images(input_image, self.batch_image_size, stride=self.stride)
 			input_interpolated_batch_images = util.get_split_images(input_interpolated_image, output_window_size,
 			                                                        stride=output_window_stride)
+
 			if input_batch_images is None or input_interpolated_batch_images is None:
+				# if the original image size * scale is less than batch image size
 				continue
 			input_count = input_batch_images.shape[0]
 
 			true_batch_images = util.get_split_images(true_image, output_window_size, stride=output_window_stride)
 
 			for i in range(input_count):
-				save_input_batch_image(batch_dir, images_count, input_batch_images[i])
-				save_interpolated_batch_image(batch_dir, images_count, input_interpolated_batch_images[i])
-				save_true_batch_image(batch_dir, images_count, true_batch_images[i])
+				self.save_input_batch_image(images_count, input_batch_images[i])
+				self.save_interpolated_batch_image(images_count, input_interpolated_batch_images[i])
+				self.save_true_batch_image(images_count, true_batch_images[i])
 				images_count += 1
 			processed_images += 1
 			if processed_images % 10 == 0:
@@ -167,19 +138,19 @@ class BatchDataSets:
 		config.set("batch", "stride", str(self.stride))
 		config.set("batch", "channels", str(self.channels))
 
-		with open(batch_dir + "/batch_images.ini", "w") as configfile:
+		with open(self.batch_dir + "/batch_images.ini", "w") as configfile:
 			config.write(configfile)
 
-	def load_batch_counts(self, batch_dir):
+	def load_batch_counts(self):
 		""" load already built batch images. """
 
-		if not os.path.isdir(batch_dir):
+		if not os.path.isdir(self.batch_dir):
 			self.count = 0
 			return
 
 		config = configparser.ConfigParser()
 		try:
-			with open(batch_dir + "/batch_images.ini") as f:
+			with open(self.batch_dir + "/batch_images.ini") as f:
 				config.read_file(f)
 			self.count = config.getint("batch", "count")
 
@@ -191,19 +162,19 @@ class BatchDataSets:
 
 		print("Allocating memory for all batch images...")
 		self.input_images = np.zeros(shape=[self.count, self.batch_image_size, self.batch_image_size, 1],
-		                             dtype=np.int8)  # type: np.ndarray
+		                             dtype=np.uint8)  # type: np.ndarray
 		self.input_interpolated_images = np.zeros(
 			shape=[self.count, self.batch_image_size * self.scale, self.batch_image_size * self.scale, 1],
-			dtype=np.int8)  # type: np.ndarray
+			dtype=np.uint8)  # type: np.ndarray
 		self.true_images = np.zeros(
 			shape=[self.count, self.batch_image_size * self.scale, self.batch_image_size * self.scale, 1],
-			dtype=np.int8)  # type: np.ndarray
+			dtype=np.uint8)  # type: np.ndarray
 
 		print("Loading all batch images...")
 		for i in range(self.count):
-			self.input_images[i] = load_input_batch_image(self.batch_dir, i)
-			self.input_interpolated_images[i] = load_interpolated_batch_image(self.batch_dir, i)
-			self.true_images[i] = load_true_batch_image(self.batch_dir, i)
+			self.input_images[i] = self.load_input_batch_image(i)
+			self.input_interpolated_images[i] = self.load_interpolated_batch_image(i)
+			self.true_images[i] = self.load_true_batch_image(i)
 			if i % 1000 == 0:
 				print('.', end='', flush=True)
 
@@ -221,13 +192,13 @@ class BatchDataSets:
 			del self.true_images
 		self.true_images = None
 
-	def is_batch_exist(self, batch_dir):
-		if not os.path.isdir(batch_dir):
+	def is_batch_exist(self):
+		if not os.path.isdir(self.batch_dir):
 			return False
 
 		config = configparser.ConfigParser()
 		try:
-			with open(batch_dir + "/batch_images.ini") as f:
+			with open(self.batch_dir + "/batch_images.ini") as f:
 				config.read_file(f)
 
 			if config.getint("batch", "count") <= 0:
@@ -260,14 +231,13 @@ class BatchDataSets:
 		self.index += 1
 		return image_no
 
-	def load_batch_image_from_disk(self, index):
+	def load_batch_image_from_disk(self, image_number):
 
-		index = index % self.count
-		image_number = self.batch_index[index]
+		image_number = image_number % self.count
 
-		input_image = load_input_batch_image(self.batch_dir, image_number)
-		input_interpolated = load_interpolated_batch_image(self.batch_dir, image_number)
-		true = load_true_batch_image(self.batch_dir, image_number)
+		input_image = self.load_input_batch_image(image_number)
+		input_interpolated = self.load_interpolated_batch_image(image_number)
+		true = self.load_true_batch_image(image_number)
 
 		return input_image, input_interpolated, true
 
@@ -275,6 +245,27 @@ class BatchDataSets:
 
 		number = self.get_next_image_no()
 		return self.input_images[number], self.input_interpolated_images[number], self.true_images[number]
+
+	def load_input_batch_image(self, image_number):
+		image = misc.imread(self.batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number)
+		return image.reshape(image.shape[0], image.shape[1], 1)
+
+	def load_interpolated_batch_image(self, image_number):
+		image = misc.imread(self.batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number)
+		return image.reshape(image.shape[0], image.shape[1], 1)
+
+	def load_true_batch_image(self, image_number):
+		image = misc.imread(self.batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number)
+		return image.reshape(image.shape[0], image.shape[1], 1)
+
+	def save_input_batch_image(self, image_number, image):
+		return util.save_image(self.batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number, image)
+
+	def save_interpolated_batch_image(self, image_number, image):
+		return util.save_image(self.batch_dir + "/" + INTERPOLATED_IMAGE_DIR + "/%06d.bmp" % image_number, image)
+
+	def save_true_batch_image(self, image_number, image):
+		return util.save_image(self.batch_dir + "/" + TRUE_IMAGE_DIR + "/%06d.bmp" % image_number, image)
 
 
 class DynamicDataSets:
