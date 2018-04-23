@@ -48,9 +48,9 @@ flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch
 
 # Learning Rate Control for Training
 flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
-flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate when it does not reduced during specific epoch")
-flags.DEFINE_integer("lr_decay_epoch", 9, "")
-flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate (2e-5")
+flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate")
+flags.DEFINE_integer("lr_decay_epoch", 9, "After this epochs are completed, learning rate will be decayed by lr_decay.")
+flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate. If the current learning rate gets lower than this value, then training will be finished.")
 
 # Dataset or Others
 flags.DEFINE_string("dataset", "bsd200", "Training dataset dir. [yang91, general100, bsd200, other]")

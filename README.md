@@ -43,10 +43,19 @@ tensorflow > 1.0, scipy, numpy and pillow
 
 ## Result of PSNR
 
-The sample result of default parameter is here. You can have even better PSNR than below with using larger filters or deeper layers with our model.
+The sample result of default parameter is here. The model is trained by (Yang91 + BSD100)x(augmented by 8).
 
-| DataSet | Bicubic | DRCN | VDSR | DCSCN (ver2) | |
-|:-------:|:-------:|:----:|:----:|:----:|:----:|
+| Dataset | Scale | Bicubic | DRCN | VDSR | DCSCN (ver2) | DRRN |
+|:-------:|:-------:|:-------:|:----:|:----:|:----:|:----:|
+| set5 | x2 | 33.66 | 37.63 | 37.53 | 37.72 | 37.74 |
+|  | x3 | 30.39 | 33.82 | 33.66 | 33.96 | 34.03 |
+|  | x4 | 28.42 | 31.53 | 31.35 | (31.68) | 31.68 |
+| set14 | x2 | 30.24 | 33.04 | 33.03 | 33.25 | 33.23 |
+|  | x3 | 27.55 | 29.76 | 29.77 | 29.90 | 29.96 |
+|  | x4 | 26.00 | 28.02 | 28.01 | (28.24) | 28.21 |
+| bsd100 | x2 | 29.56 | 31.85 | 31.90 | 32.00 | 32.05 |
+|  | x3 | 27.21 | 28.80 | 28.82 | 28.86 | 28.95 |
+|  | x4 | 25.96 | 27.23 | 27.29 | (27.40) | 27.38 |
 
 Results and model will be uploaded in some days!!
 
@@ -130,7 +139,11 @@ In this case, batch image positions are adjusted and limited to be on the grid w
 | batch_num | Image num for each batch | 20 | Number of batch images for one training step. |
 | clipping_norm | value for gradient clipping | 5 | Norm for gradient clipping. If it's <= 0 we don't use gradient clipping. |
 
-( Also learning late and other model parameters are still important. Please check arg.py for other params. )
+Also learning late and other model parameters are still important.
+
+We'll train [ __training_images__ / __batch_num__ ] steps for each epoch. Learning rate will be started from __initial_lr__. After [lr_decay_epoch] epochs has done, learning rate will be decayed by __lr_decay__. And when the current learning rate gets lower than __end_lr__, then training will be finished.
+
+Usually you can control how much iterate the training batch by adjusting __training_images__ and __lr_decay_epoch__. Please check arg.py for other params.
 
 ## Data augmentation
 
@@ -153,12 +166,12 @@ python train.py --dataset yang91_4
 
 RGB image is converted to YCbCr image. And then trained and applied only for Y channel.
 
-For PSNR, by the default, result and original image are cropped by the border size = (2 + scale) and then MSE and PSNR are calculated.
+For PSNR, by the default, result and original image are cropped by the border size = (2 + scale), rounded to integer and then MSE and PSNR are calculated.
 
 
 ## Visualization
 
-During the training, tensorboard log is available, logged under **tf_log** directory.
+During the training, tensorboard log is available under **tf_log** directory.
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/model_v2.png" width="400">
 
