@@ -43,19 +43,19 @@ tensorflow > 1.0, scipy, numpy and pillow
 
 ## Result of PSNR
 
-The sample result of default parameter is here. The model is trained by (Yang91 + BSD200)x(augmented by 8).
+The sample result of default parameter is here. The model is trained by DIV2k with 150,000 48x48 images for one epoch.
 
 | Dataset | Scale | Bicubic | DRCN | VDSR | DCSCN (ver2) | DRRN |
 |:-------:|:-------:|:-------:|:----:|:----:|:----:|:----:|
 | set5 | x2 | 33.66 | 37.63 | 37.53 | 37.77 | 37.74 |
-|  | x3 | 30.39 | 33.82 | 33.66 | 33.96 | 34.03 |
-|  | x4 | 28.42 | 31.53 | 31.35 | 31.52 | 31.68 |
+|  | x3 | 30.39 | 33.82 | 33.66 | 34.06 | 34.03 |
+|  | x4 | 28.42 | 31.53 | 31.35 | (31.52) | 31.68 |
 | set14 | x2 | 30.24 | 33.04 | 33.03 | 33.24 | 33.23 |
-|  | x3 | 27.55 | 29.76 | 29.77 | 29.90 | 29.96 |
-|  | x4 | 26.00 | 28.02 | 28.01 | 28.16 | 28.21 |
+|  | x3 | 27.55 | 29.76 | 29.77 | 29.95 | 29.96 |
+|  | x4 | 26.00 | 28.02 | 28.01 | (28.16) | 28.21 |
 | bsd100 | x2 | 29.56 | 31.85 | 31.90 | 31.99 | 32.05 |
-|  | x3 | 27.21 | 28.80 | 28.82 | 28.86 | 28.95 |
-|  | x4 | 25.96 | 27.23 | 27.29 | 27.31 | 27.38 |
+|  | x3 | 27.21 | 28.80 | 28.82 | 28.89 | 28.95 |
+|  | x4 | 25.96 | 27.23 | 27.29 | (27.31) | 27.38 |
 
 Results and model will be uploaded in some days!!
 
@@ -125,8 +125,8 @@ In this case, batch image positions are adjusted and limited to be on the grid w
 | Parameter arg | Name | Default | Explanation |
 |:-------:|:-------:|:----:|:----:|
 | layers | Num CNN layers | 12 | Number of layers of feature-extraction CNNs |
-| filters | Num of first CNN filters | 196 | Number of filters of first feature-extraction CNNs |
-| min_filters | Num of last CNN filters | 196 | Number of filters of last feature-extraction CNNs |
+| filters | Num of first CNN filters | 196 | Number of filters of the first feature-extraction CNNs |
+| min_filters | Num of last CNN filters | 48 | Number of filters of the last feature-extraction CNNs |
 | filters_decay_gamma | Decay Gamma | 1.5 | Number of CNN filters are decayed from [filters] to [min_filters] by this gamma on each layers |
 | pixel_shuffler | Pixel Shuffler | True | Use Pixel Shuffler as up-sampling layer. If it's False, use transposed CNN as up-sampling layer. |
 | self_ensemble | Self Ensemble | 8 | Apply SR for 1-8 flipped/rotate images and then use mean image as result. |
