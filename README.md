@@ -43,19 +43,19 @@ tensorflow > 1.0, scipy, numpy and pillow
 
 ## Result of PSNR
 
-The sample result of default parameter is here. The model is trained by (Yang91 + BSD100)x(augmented by 8).
+The sample result of default parameter is here. The model is trained by (Yang91 + BSD200)x(augmented by 8).
 
 | Dataset | Scale | Bicubic | DRCN | VDSR | DCSCN (ver2) | DRRN |
 |:-------:|:-------:|:-------:|:----:|:----:|:----:|:----:|
-| set5 | x2 | 33.66 | 37.63 | 37.53 | 37.72 | 37.74 |
+| set5 | x2 | 33.66 | 37.63 | 37.53 | 37.77 | 37.74 |
 |  | x3 | 30.39 | 33.82 | 33.66 | 33.96 | 34.03 |
-|  | x4 | 28.42 | 31.53 | 31.35 | (31.68) | 31.68 |
-| set14 | x2 | 30.24 | 33.04 | 33.03 | 33.25 | 33.23 |
+|  | x4 | 28.42 | 31.53 | 31.35 | 31.52 | 31.68 |
+| set14 | x2 | 30.24 | 33.04 | 33.03 | 33.24 | 33.23 |
 |  | x3 | 27.55 | 29.76 | 29.77 | 29.90 | 29.96 |
-|  | x4 | 26.00 | 28.02 | 28.01 | (28.24) | 28.21 |
-| bsd100 | x2 | 29.56 | 31.85 | 31.90 | 32.00 | 32.05 |
+|  | x4 | 26.00 | 28.02 | 28.01 | 28.16 | 28.21 |
+| bsd100 | x2 | 29.56 | 31.85 | 31.90 | 31.99 | 32.05 |
 |  | x3 | 27.21 | 28.80 | 28.82 | 28.86 | 28.95 |
-|  | x4 | 25.96 | 27.23 | 27.29 | (27.40) | 27.38 |
+|  | x4 | 25.96 | 27.23 | 27.29 | 27.31 | 27.38 |
 
 Results and model will be uploaded in some days!!
 
