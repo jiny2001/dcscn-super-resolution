@@ -49,13 +49,13 @@ The sample result of default parameter is here. The model is trained by DIV2k wi
 |:-------:|:-------:|:-------:|:----:|:----:|:----:|:----:|
 | set5 | x2 | 33.66 | 37.63 | 37.53 | 37.77 | 37.74 |
 |  | x3 | 30.39 | 33.82 | 33.66 | 34.06 | 34.03 |
-|  | x4 | 28.42 | 31.53 | 31.35 | (31.52) | 31.68 |
+|  | x4 | 28.42 | 31.53 | 31.35 | 31.72 | 31.68 |
 | set14 | x2 | 30.24 | 33.04 | 33.03 | 33.24 | 33.23 |
 |  | x3 | 27.55 | 29.76 | 29.77 | 29.95 | 29.96 |
-|  | x4 | 26.00 | 28.02 | 28.01 | (28.16) | 28.21 |
+|  | x4 | 26.00 | 28.02 | 28.01 | 28.25 | 28.21 |
 | bsd100 | x2 | 29.56 | 31.85 | 31.90 | 31.99 | 32.05 |
 |  | x3 | 27.21 | 28.80 | 28.82 | 28.89 | 28.95 |
-|  | x4 | 25.96 | 27.23 | 27.29 | (27.31) | 27.38 |
+|  | x4 | 25.96 | 27.23 | 27.29 | 27.35 | 27.38 |
 
 Results and model will be uploaded in some days!!
 
@@ -67,13 +67,13 @@ Some pre-trained models are included.
 
 ```
 # evaluating set14 dataset
-python evaluate.py --test_dataset set14 --save_results True
+python evaluate.py --test_dataset=set14 --save_results=true
 
 # evaluating set5 dataset with small model
-python evaluate.py --test_dataset set5 --save_results True --layers 7 --filters 64
+python evaluate.py --test_dataset=set5 --save_results=true --layers=7 --filters=64
 
 # evaluating all(set5,set14,bsd100) dataset
-python evaluate.py --test_dataset all
+python evaluate.py --test_dataset=all
 ```
 
 ## Apply to your own image
@@ -84,10 +84,10 @@ If you want to apply this model on your image001.png file, try those.
 
 ```
 # apply super resolution on image001.jpg (then see results at output directory)
-python sr.py --file your_file.png
+python sr.py --file=your_file.png
 
 # apply super resolution with small model
-python sr.py --file your_file.png --layers 7 --filters 64
+python sr.py --file=your_file.png --layers=7 --filters=64
 ```
 
 ## How to train
@@ -98,16 +98,16 @@ Each training and evaluation result will be added to **log.txt**.
 
 ```
 # training with bsd200 dataset
-python train.py --dataset bsd200 --training_images 80000
+python train.py --dataset=bsd200 --training_images=80000
 
 # training with small model
-python train.py --dataset bsd200 --layers 7 --filters 64 --training_images 30000
+python train.py --dataset=bsd200 --layers=7 --filters=64 --training_images=30000
 
 # training with tiny model for test
-python train.py --dataset set5 --layers 5 --filters 32 --use_nin False --training_images 10000
+python train.py --dataset=set5 --layers=5 --filters=32 --use_nin=false --training_images=10000
 
 # training with transposed CNN instead of using Pixel Shuffler layer for up-sampling
-python train.py --dataset bsd200 --training_images 80000 --pixel_shuffler False
+python train.py --dataset=bsd200 --training_images=80000 --pixel_shuffler=false
 ```
 
 Please note loading/converting batch images for each training is a bit heavy process since there will be a lot of iterations. Here are some options. You can use those option to reduce training time significantly.
@@ -153,13 +153,13 @@ To have better model, you should use larger training data like (BSD200 + Yang91)
 
 ```
 # build 4x augmented dataset for yang91 dataset (will add flipped images)
-python augmentation.py --dataset yang91 --augment_level 4
+python augmentation.py --dataset=yang91 --augment_level=4
 
 # build 8x augmented dataset for yang91 dataset (will add flipped and rotated images)
-python augmentation.py --dataset yang91 --augment_level 8
+python augmentation.py --dataset=yang91 --augment_level=8
 
 # train with augmented data
-python train.py --dataset yang91_4
+python train.py --dataset=yang91_4
 ```
 
 ## How to calculate PSNR

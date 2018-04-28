@@ -56,13 +56,13 @@ def main(not_parsed_args):
 	model.copy_log_to_archive("archive")
 
 
-def train(model, flags, trial, load_model_name=""):
+def train(model, flags, trial):
 
 	test_filenames = util.get_files_in_directory(flags.data_dir + "/" + flags.test_dataset)
 
 	model.init_all_variables()
-	if load_model_name != "":
-		model.load_model(load_model_name, output_log=True)
+	if flags.load_model_name != "":
+		model.load_model(flags.load_model_name, output_log=True)
 
 	model.init_train_step()
 	model.init_epoch_index()
