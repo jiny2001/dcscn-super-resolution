@@ -8,14 +8,15 @@ import datetime
 import logging
 import math
 import os
+import time
 from os import listdir
+
+import numpy as np
+import tensorflow as tf
+from PIL import Image
 from os.path import isfile, join
 from scipy import misc
-from sklearn.manifold import TSNE
-import tensorflow as tf
-import time
-import numpy as np
-from PIL import Image
+
 
 class Timer:
 	def __init__(self, timer_count=100):
@@ -269,7 +270,6 @@ def load_image_data(filename, width=0, height=0, channels=0, alignment=0, print_
 
 
 def get_split_images(image, window_size, stride=None, enable_duplicate=False):
-
 	if len(image.shape) == 3 and image.shape[2] == 1:
 		image = image.reshape(image.shape[0], image.shape[1])
 
@@ -431,6 +431,31 @@ def add_summaries(scope_name, model_name, var, save_stddev=True, save_mean=False
 def log_scalar_value(writer, name, value, step):
 	summary = tf.Summary(value=[tf.Summary.Value(tag=name, simple_value=value)])
 	writer.add_summary(summary, step)
+
+
+def log_fcn_output_as_images(image, width, height, filters, model_name, max_outputs=20):
+	"""
+	input tensor should be [ N, H * W * C ]
+	so transform to [ N H W C ] and visualize only first channel
+	"""
+	reshaped_image = tf.reshape(image, [-1, height, width, filters])
+	tf.summary.image(model_name, reshaped_image[:, :, :, :1], max_outputs=max_outputs)
+
+
+def log_cnn_weights_as_images(model_name, weights, max_outputs=20):
+	"""
+	input tensor should be [ W, H, In_Ch, Out_Ch ]
+	so transform to [ In_Ch * Out_Ch, W, H ] and visualize it
+	"""
+	shapes = get_shapes(weights)
+	weights = tf.reshape(weights, [shapes[0], shapes[1], shapes[2] * shapes[3]])
+	weights_transposed = tf.transpose(weights, [2, 0, 1])
+	weights_transposed = tf.reshape(weights_transposed, [shapes[2] * shapes[3], shapes[0], shapes[1], 1])
+	tf.summary.image(model_name, weights_transposed, max_outputs=max_outputs)
+
+
+def get_shapes(input_tensor):
+	return input_tensor.get_shape().as_list()
 
 
 def get_now_date():

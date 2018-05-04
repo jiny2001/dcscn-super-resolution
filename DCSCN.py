@@ -194,6 +194,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		input_feature_num = self.channels
 		input_tensor = self.x
 
+		if self.save_weights:
+			with tf.name_scope("X"):
+				util.add_summaries("output", self.name, self.x, save_stddev=True, save_mean=True)
+
 		for i in range(self.layers):
 			if self.min_filters != 0 and i > 0:
 				x1 = i / float(self.layers - 1)
@@ -250,6 +254,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		self.y_ = self.H[-1] + self.x2
 
+		if self.save_weights:
+			with tf.name_scope("Y_"):
+				util.add_summaries("output", self.name, self.y_, save_stddev=True, save_mean=True)
+
 		logging.info("Feature:%s Complexity:%s Receptive Fields:%d" % (
 			self.features, "{:,}".format(self.complexity), self.receptive_fields))
 
@@ -260,12 +268,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 
-		#		with tf.variable_scope("CropDiff"):
 		diff = self.y_ - self.y
-		# if self.psnr_calc_border_size > 0:
-		# 	offset = self.psnr_calc_border_size
-		# 	size = self.batch_image_size * self.scale - 2 * self.psnr_calc_border_size
-		#	diff = tf.image.crop_to_bounding_box(diff, offset, offset, size, size)
 
 		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
 		loss = self.mse
@@ -343,57 +346,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.training_step += 1
 		self.step += 1
 
-	def evaluate_test_batch(self, save_meta_data=False, trial=0, log_profile=True):
-
-		save_meta_data = save_meta_data and self.save_meta_data and (trial == 0)
-		feed_dict = {self.x: self.test.input.images,
-		             self.x2: self.test.input.hr_images,
-		             self.y: self.test.true.hr_images,
-		             self.dropout: 1.0,
-		             self.is_training: 0}
-
-		if log_profile and (self.save_loss or self.save_weights or save_meta_data):
-
-			if save_meta_data:
-				# profiler = tf.profiler.Profile(self.sess.graph)
-
-				run_metadata = tf.RunMetadata()
-				run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-				summary_str, mse = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict, options=run_options,
-				                                 run_metadata=run_metadata)
-				self.test_writer.add_run_metadata(run_metadata, "step%d" % self.epochs_completed)
-
-				filename = self.checkpoint_dir + "/" + self.name + "_metadata.txt"
-				with open(filename, "w") as out:
-					out.write(str(run_metadata))
-
-				# filename = self.checkpoint_dir + "/" + self.name + "_memory.txt"
-				# tf.profiler.write_op_log(
-				# 	tf.get_default_graph(),
-				# 	log_dir=self.checkpoint_dir,
-				# 	#op_log=op_log,
-				# 	run_meta=run_metadata)
-
-				tf.contrib.tfprof.model_analyzer.print_model_analysis(
-					tf.get_default_graph(), run_meta=run_metadata,
-					tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
-
-			else:
-				summary_str, mse = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict)
-
-			self.train_writer.add_summary(summary_str, self.epochs_completed)
-			util.log_scalar_value(self.train_writer, 'training_PSNR', self.training_psnr_sum / self.training_step,
-			                      self.epochs_completed)
-			util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
-			self.train_writer.flush()
-
-			util.log_scalar_value(self.test_writer, 'PSNR', util.get_psnr(mse), self.epochs_completed)
-			self.test_writer.flush()
-		else:
-			mse = self.sess.run(self.mse, feed_dict=feed_dict)
-
-		return mse
-
 	def log_to_tensorboard(self, test_filename, psnr, save_meta_data=True):
 
 		# todo
@@ -442,7 +394,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			summary_str, _ = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict)
 
 		self.train_writer.add_summary(summary_str, self.epochs_completed)
-		util.log_scalar_value(self.train_writer, 'training_PSNR', self.training_psnr_sum / self.training_step,
+		util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
 		                      self.epochs_completed)
 		util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
 		self.train_writer.flush()

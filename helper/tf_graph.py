@@ -135,12 +135,8 @@ class TensorflowGraph:
 				if use_bias:
 					util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
 
-			# todo check
-			if self.save_images and cnn_size > 1 and input_feature_num == 1:
-				weight_transposed = tf.transpose(w, [3, 0, 1, 2])
-
-				with tf.name_scope("image"):
-					tf.summary.image(self.name, weight_transposed, max_outputs=self.log_weight_image_num)
+			if self.save_images:
+				util.log_cnn_weights_as_images(self.name, w, max_outputs=self.save_images_num)
 
 		if self.receptive_fields == 0:
 			self.receptive_fields = cnn_size
