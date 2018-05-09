@@ -70,7 +70,7 @@ Some pre-trained models are included.
 python evaluate.py --test_dataset=set14 --save_results=true
 
 # evaluating set5 dataset with small model
-python evaluate.py --test_dataset=set5 --save_results=true --layers=7 --filters=64
+python evaluate.py --test_dataset=set5 --save_results=true --layers=8 --filters=96
 
 # evaluating all(set5,set14,bsd100) dataset
 python evaluate.py --test_dataset=all
@@ -97,17 +97,20 @@ You can train with any datasets. Put your image files as a training dataset into
 Each training and evaluation result will be added to **log.txt**.
 
 ```
-# training with bsd200 dataset
+# training for x2 with bsd200 dataset
 python train.py --dataset=bsd200 --training_images=80000
 
-# training with small model
-python train.py --dataset=bsd200 --layers=7 --filters=64 --training_images=30000
+# training for x2 with small model
+python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
 
-# training with tiny model for test
+# training for x2 with tiny model for test
 python train.py --dataset=set5 --layers=5 --filters=32 --use_nin=false --training_images=10000
 
-# training with transposed CNN instead of using Pixel Shuffler layer for up-sampling
+# training for x2 with transposed CNN instead of using Pixel Shuffler layer for up-sampling
 python train.py --dataset=bsd200 --training_images=80000 --pixel_shuffler=false
+
+# training for x3 scale
+python train.py --scale=3
 ```
 
 Please note loading/converting batch images for each training is a bit heavy process since there will be a lot of iterations. Here are some options. You can use those option to reduce training time significantly.
