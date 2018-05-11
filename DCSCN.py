@@ -47,6 +47,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.optimizer = flags.optimizer
 		self.beta1 = flags.beta1
 		self.beta2 = flags.beta2
+		self.epsilon = flags.epsilon
 		self.momentum = flags.momentum
 		self.batch_num = flags.batch_num
 		self.batch_image_size = flags.batch_image_size
@@ -313,7 +314,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		elif self.optimizer == "adagrad":
 			optimizer = tf.train.AdagradOptimizer(lr_input)
 		elif self.optimizer == "adam":
-			optimizer = tf.train.AdamOptimizer(lr_input, beta1=self.beta1, beta2=self.beta2)
+			optimizer = tf.train.AdamOptimizer(lr_input, beta1=self.beta1, beta2=self.beta2, epsilon=self.epsilon)
 		elif self.optimizer == "momentum":
 			optimizer = tf.train.MomentumOptimizer(lr_input, self.momentum)
 		elif self.optimizer == "rmsprop":
