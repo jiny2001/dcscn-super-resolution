@@ -90,6 +90,8 @@ class TensorflowGraph:
 				if self.save_weights:
 					util.add_summaries("prelu_alpha", self.name, alphas, save_stddev=False, save_mean=False)
 				output = tf.nn.relu(input_tensor) + tf.multiply(alphas, (input_tensor - tf.abs(input_tensor))) * 0.5
+		elif activator == "selu":
+			output = tf.nn.selu(input_tensor, name=base_name + "_selu")
 		else:
 			raise NameError('Not implemented activator:%s' % activator)
 
