@@ -87,7 +87,7 @@ If you want to apply this model on your image001.png file, try those.
 python sr.py --file=your_file.png
 
 # apply super resolution with small model
-python sr.py --file=your_file.png --layers=7 --filters=64
+python sr.py --file=your_file.png --layers=8 --filters=96
 ```
 
 ## How to train

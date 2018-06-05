@@ -56,6 +56,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		else:
 			self.stride_size = flags.stride_size
 		self.clipping_norm = flags.clipping_norm
+		self.use_l1_loss = flags.use_l1_loss
 
 		# Learning Rate Control for Training
 		self.initial_lr = flags.initial_lr
@@ -271,8 +272,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		diff = self.y_ - self.y
 
-		self.mse = tf.reduce_mean(tf.square(diff), name="mse")
-		loss = self.mse
+		if self.use_l1_loss:
+			self.loss = tf.reduce_mean(tf.abs(diff), name="loss")
+			self.mse = tf.reduce_mean(tf.square(diff), name="mse")
+		else:
+			self.mse = tf.reduce_mean(tf.square(diff), name="mse")
+			self.loss = self.mse
+
+		self.total_loss = self.loss
 
 		if self.l2_decay > 0:
 			l2_losses = [tf.nn.l2_loss(w) for w in self.Weights]
@@ -281,19 +288,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			if self.save_loss:
 				tf.summary.scalar("loss_l2/" + self.name, l2_loss)
 
-			loss += l2_loss
+			self.total_loss += l2_loss
 
 		if self.save_loss:
-			tf.summary.scalar("loss/" + self.name, loss)
-
-		self.loss = loss
+			tf.summary.scalar("loss/" + self.name, self.total_loss)
 
 		if self.batch_norm:
 			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 			with tf.control_dependencies(update_ops):
-				self.training_optimizer = self.add_optimizer_op(loss, self.lr_input)
+				self.training_optimizer = self.add_optimizer_op(self.total_loss, self.lr_input)
 		else:
-			self.training_optimizer = self.add_optimizer_op(loss, self.lr_input)
+			self.training_optimizer = self.add_optimizer_op(self.total_loss, self.lr_input)
 
 		util.print_num_of_total_parameters(output_detail=True)
 
@@ -323,14 +328,21 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			print("Optimizer arg should be one of [gd, adadelta, adagrad, adam, momentum, rmsprop].")
 			return None
 
-		if self.clipping_norm > 0:
+		if self.clipping_norm > 0 or self.save_loss:
 			trainables = tf.trainable_variables()
 			grads = tf.gradients(loss, trainables)
 			grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
 			grad_var_pairs = zip(grads, trainables)
-
 			training_optimizer = optimizer.apply_gradients(grad_var_pairs)
+
+			if self.save_loss:
+				for i in range(len(grads)):
+					mean = tf.reduce_mean(tf.abs(grads[i]))
+					tf.summary.scalar("grad_%02d/mean/%s" % (i, self.name), mean)
+					max_grad = tf.reduce_max(tf.abs(grads[i]))
+					tf.summary.scalar("grad_%02d/max/%s" % (i,self.name), max_grad)
 		else:
+
 			training_optimizer = optimizer.minimize(loss)
 
 		return training_optimizer
@@ -372,7 +384,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 			run_metadata = tf.RunMetadata()
 			run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			summary_str, _ = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict, options=run_options,
+			summary_str, _ = self.sess.run([self.summary_op, self.loss], feed_dict=feed_dict, options=run_options,
 			                               run_metadata=run_metadata)
 			self.test_writer.add_run_metadata(run_metadata, "step%d" % self.epochs_completed)
 
@@ -392,7 +404,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 				tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
 
 		else:
-			summary_str, _ = self.sess.run([self.summary_op, self.mse], feed_dict=feed_dict)
+			summary_str, _ = self.sess.run([self.summary_op, self.loss], feed_dict=feed_dict)
 
 		self.train_writer.add_summary(summary_str, self.epochs_completed)
 		util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
@@ -647,11 +659,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		run_metadata = tf.RunMetadata()
 		run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 
-		_, mse = self.sess.run([self.optimizer, self.mse], feed_dict={self.x: self.batch_input,
-		                                                              self.x2: self.batch_input_bicubic,
-		                                                              self.y: self.batch_true,
-		                                                              self.lr_input: self.lr,
-		                                                              self.dropout: self.dropout_rate},
+		_, loss = self.sess.run([self.optimizer, self.loss], feed_dict={self.x: self.batch_input,
+		                                                               self.x2: self.batch_input_bicubic,
+		                                                               self.y: self.batch_true,
+		                                                               self.lr_input: self.lr,
+		                                                               self.dropout: self.dropout_rate},
 		                       options=run_options, run_metadata=run_metadata)
 
 		# tf.contrib.tfprof.model_analyzer.print_model_analysis(

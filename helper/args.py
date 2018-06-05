@@ -46,6 +46,7 @@ flags.DEFINE_integer("batch_num", 20, "Number of mini-batch images for training"
 flags.DEFINE_integer("batch_image_size", 48, "Image size for mini-batch")
 flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, use half of batch_image_size")
 flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
+flags.DEFINE_boolean("use_l1_loss", False, "Use L1 Error as loss function instead of MSE Error.")
 
 # Learning Rate Control for Training
 flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
