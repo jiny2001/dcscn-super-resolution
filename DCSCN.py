@@ -172,7 +172,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.batch_true = self.batch_num * [None]
 
 		self.training_psnr_sum = 0
-		self.training_mse_sum = 0
+		self.training_loss_sum = 0
 		self.training_step = 0
 		self.train.init_batch_index()
 
@@ -273,25 +273,25 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		diff = self.y_ - self.y
 
 		if self.use_l1_loss:
-			self.loss = tf.reduce_mean(tf.abs(diff), name="loss")
 			self.mse = tf.reduce_mean(tf.square(diff), name="mse")
+			self.loss = tf.reduce_mean(tf.abs(diff), name="loss")
 		else:
 			self.mse = tf.reduce_mean(tf.square(diff), name="mse")
 			self.loss = self.mse
 
-		self.total_loss = self.loss
-
 		if self.l2_decay > 0:
-			l2_losses = [tf.nn.l2_loss(w) for w in self.Weights]
-			# l1_losses = [tf.reduce_sum(tf.abs(w)) for w in self.weights]  # l1 loss
-			l2_loss = self.l2_decay * tf.add_n(l2_losses)
-			if self.save_loss:
-				tf.summary.scalar("loss_l2/" + self.name, l2_loss)
+			l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
+			# l1_norm_losses = [tf.reduce_sum(tf.abs(w)) for w in self.weights]  # l1 loss
+			l2_norm_loss = self.l2_decay * tf.add_n(l2_norm_losses)
+			if self.enable_log:
+				tf.summary.scalar("L2WeightDecayLoss/" + self.name, l2_norm_loss)
 
-			self.total_loss += l2_loss
+			self.total_loss = self.loss + l2_norm_loss
+		else:
+			self.total_loss = self.loss
 
-		if self.save_loss:
-			tf.summary.scalar("loss/" + self.name, self.total_loss)
+		if self.enable_log:
+			tf.summary.scalar("Loss/" + self.name, self.total_loss)
 
 		if self.batch_norm:
 			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -328,21 +328,20 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			print("Optimizer arg should be one of [gd, adadelta, adagrad, adam, momentum, rmsprop].")
 			return None
 
-		if self.clipping_norm > 0 or self.save_loss:
+		if self.clipping_norm > 0 or self.enable_log:
 			trainables = tf.trainable_variables()
 			grads = tf.gradients(loss, trainables)
 			grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
 			grad_var_pairs = zip(grads, trainables)
 			training_optimizer = optimizer.apply_gradients(grad_var_pairs)
 
-			if self.save_loss:
+			if self.enable_log:
 				for i in range(len(grads)):
 					mean = tf.reduce_mean(tf.abs(grads[i]))
-					tf.summary.scalar("grad_%02d/mean/%s" % (i, self.name), mean)
+					tf.summary.scalar("Grad%02d/mean/%s" % (i, self.name), mean)
 					max_grad = tf.reduce_max(tf.abs(grads[i]))
-					tf.summary.scalar("grad_%02d/max/%s" % (i,self.name), max_grad)
+					tf.summary.scalar("Grad%02d/max/%s" % (i, self.name), max_grad)
 		else:
-
 			training_optimizer = optimizer.minimize(loss)
 
 		return training_optimizer
@@ -352,10 +351,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_bicubic, self.y: self.batch_true,
 		             self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
 
-		_, mse = self.sess.run([self.training_optimizer, self.mse], feed_dict=feed_dict)
+		if self.use_l1_loss:
+			_, loss = self.sess.run([self.training_optimizer, self.loss], feed_dict=feed_dict)
+			self.training_loss_sum += loss
+		else:
+			_, mse = self.sess.run([self.training_optimizer, self.mse], feed_dict=feed_dict)
+			self.training_loss_sum += mse
+			self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
 
-		self.training_mse_sum += mse
-		self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
 		self.training_step += 1
 		self.step += 1
 
@@ -407,8 +410,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			summary_str, _ = self.sess.run([self.summary_op, self.loss], feed_dict=feed_dict)
 
 		self.train_writer.add_summary(summary_str, self.epochs_completed)
-		util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
-		                      self.epochs_completed)
+		if not self.use_l1_loss:
+			util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
+			                      self.epochs_completed)
 		util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
 		self.train_writer.flush()
 
@@ -434,8 +438,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			logging.info("Initial MSE:%f PSNR:%f" % (mse, psnr))
 		else:
 			processing_time = (time.time() - self.start_time) / self.step
-			line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
-				util.get_now_date(), "{:,}".format(self.step), mse, psnr, self.training_psnr_sum / self.training_step)
+			if self.use_l1_loss:
+				line_a = "%s Step:%s MSE:%f PSNR:%f (Training Loss:%0.3f)" % (
+					util.get_now_date(), "{:,}".format(self.step), mse, psnr,
+					self.training_loss_sum / self.training_step)
+			else:
+				line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
+					util.get_now_date(), "{:,}".format(self.step), mse, psnr,
+					self.training_psnr_sum / self.training_step)
 			estimated = processing_time * (self.total_epochs - self.epochs_completed) * (
 				self.training_images // self.batch_num)
 			h = estimated // (60 * 60)
@@ -660,11 +670,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 
 		_, loss = self.sess.run([self.optimizer, self.loss], feed_dict={self.x: self.batch_input,
-		                                                               self.x2: self.batch_input_bicubic,
-		                                                               self.y: self.batch_true,
-		                                                               self.lr_input: self.lr,
-		                                                               self.dropout: self.dropout_rate},
-		                       options=run_options, run_metadata=run_metadata)
+		                                                                self.x2: self.batch_input_bicubic,
+		                                                                self.y: self.batch_true,
+		                                                                self.lr_input: self.lr,
+		                                                                self.dropout: self.dropout_rate},
+		                        options=run_options, run_metadata=run_metadata)
 
 		# tf.contrib.tfprof.model_analyzer.print_model_analysis(
 		#   tf.get_default_graph(),

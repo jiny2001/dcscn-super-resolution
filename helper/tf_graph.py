@@ -38,7 +38,7 @@ class TensorflowGraph:
 		self.test_writer = None
 
 		# Debugging or Logging
-		self.save_loss = flags.save_loss
+		self.enable_log = flags.enable_log
 		self.save_weights = flags.save_weights
 		self.save_images = flags.save_images
 		self.save_images_num = flags.save_images_num
@@ -228,7 +228,7 @@ class TensorflowGraph:
 			print("Model saved [%s]." % filename)
 
 	def build_summary_saver(self):
-		if self.save_loss or self.save_weights or self.save_meta_data:
+		if self.enable_log or self.save_weights or self.save_meta_data:
 			self.summary_op = tf.summary.merge_all()
 			self.train_writer = tf.summary.FileWriter(self.tf_log_dir + "/train")
 			self.test_writer = tf.summary.FileWriter(self.tf_log_dir + "/test", graph=self.sess.graph)

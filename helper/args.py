@@ -79,8 +79,8 @@ flags.DEFINE_string("load_model_name", "", "Filename of model loading before sta
 
 # Debugging or Logging
 flags.DEFINE_boolean("initialize_tf_log", True, "Clear all tensorboard log before start")
-flags.DEFINE_boolean("save_loss", True, "Save loss")
-flags.DEFINE_boolean("save_weights", True, "Save weights and biases")
+flags.DEFINE_boolean("enable_log", True, "Enables tensorboard-log. Save loss.")
+flags.DEFINE_boolean("save_weights", True, "Save weights and biases/gradients")
 flags.DEFINE_boolean("save_images", True, "Save CNN weights as images")
 flags.DEFINE_integer("save_images_num", 20, "Number of CNN images saved")
 flags.DEFINE_boolean("save_meta_data", False, "")
