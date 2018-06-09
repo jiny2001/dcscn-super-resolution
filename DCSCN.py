@@ -331,16 +331,16 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		if self.clipping_norm > 0 or self.enable_log:
 			trainables = tf.trainable_variables()
 			grads = tf.gradients(loss, trainables)
-			grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
-			grad_var_pairs = zip(grads, trainables)
+			clipped_grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
+			grad_var_pairs = zip(clipped_grads, trainables)
 			training_optimizer = optimizer.apply_gradients(grad_var_pairs)
 
-			if self.enable_log:
+			if self.enable_log and self.save_weights:
 				for i in range(len(grads)):
 					mean = tf.reduce_mean(tf.abs(grads[i]))
-					tf.summary.scalar("Grad%02d/mean/%s" % (i, self.name), mean)
+					tf.summary.scalar("%s/mean/%s" % (grads[i].name, self.name), mean)
 					max_grad = tf.reduce_max(tf.abs(grads[i]))
-					tf.summary.scalar("Grad%02d/max/%s" % (i, self.name), max_grad)
+					tf.summary.scalar("%s/max/%s" % (grads[i].name, self.name), max_grad)
 		else:
 			training_optimizer = optimizer.minimize(loss)
 
