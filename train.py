@@ -67,7 +67,7 @@ def train(model, flags, trial):
 	model.init_train_step()
 	model.init_epoch_index()
 	model_updated = True
-	mse = 0
+	min_mse = None
 
 	while model.lr > flags.end_lr:
 
@@ -76,11 +76,16 @@ def train(model, flags, trial):
 
 		if model.training_step * model.batch_num >= model.training_images:
 
-			# training epoch finished
+			# one training epoch finished
 			model.epochs_completed += 1
 			mse, psnr = model.evaluate(test_filenames)
 			model.print_status(mse, psnr, log=model_updated)
 			model.log_to_tensorboard(test_filenames[0], psnr, save_meta_data=model_updated)
+
+			# save if performance gets better
+			if min_mse is None or min_mse > mse:
+				min_mse = mse
+				model.save_model(trial=trial, output_log=False)
 
 			model_updated = model.update_epoch_and_lr()
 			model.init_epoch_index()

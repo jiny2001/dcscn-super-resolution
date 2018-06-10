@@ -29,6 +29,10 @@ As a ver2, we also implemented these features.
 
 ## Sample result
 
+| Original input image and x4 bicubic | Our DCSCN output |
+|:-------:|:-------:|
+| <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/dcscn_l.png" width="380"> | <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/dcscn_r.png" width="380"> |
+
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/result.png" width="864">
 
 Our model, DCSCN was much lighter than other Deep Learning based SISR models which is [ver 1](https://github.com/jiny2001/dcscn-super-resolution/tree/ver1). As a ver2, we use larger model and recent technics to get a better image restoration performace.

@@ -58,6 +58,7 @@ flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate. If the current l
 flags.DEFINE_string("dataset", "bsd200", "Training dataset dir. [yang91, general100, bsd200, other]")
 flags.DEFINE_string("test_dataset", "set5", "Directory for test dataset [set5, set14, bsd100, urban100, all]")
 flags.DEFINE_integer("tests", 1, "Number of training sets")
+flags.DEFINE_integer("keep_generations", 1, "The number of generations kept in checkpoint.")
 flags.DEFINE_boolean("do_benchmark", False, "Evaluate the performance for set5, set14 and bsd100 after the training.")
 
 # Image Processing
