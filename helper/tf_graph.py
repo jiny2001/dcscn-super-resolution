@@ -39,10 +39,10 @@ class TensorflowGraph:
 
 		# Debugging or Logging
 		self.enable_log = flags.enable_log
-		self.save_weights = flags.save_weights
-		self.save_images = flags.save_images
+		self.save_weights = flags.save_weights and flags.enable_log
+		self.save_images = flags.save_images and flags.enable_log
 		self.save_images_num = flags.save_images_num
-		self.save_meta_data = flags.save_meta_data
+		self.save_meta_data = flags.save_meta_data and flags.enable_log
 		self.log_weight_image_num = 32
 
 		# Environment (all directory name should not contain '/' after )
@@ -137,7 +137,7 @@ class TensorflowGraph:
 				if use_bias:
 					util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
 
-			if self.save_images:
+			if self.save_images and cnn_size > 1:
 				util.log_cnn_weights_as_images(self.name, w, max_outputs=self.save_images_num)
 
 		if self.receptive_fields == 0:
@@ -228,7 +228,7 @@ class TensorflowGraph:
 			print("Model saved [%s]." % filename)
 
 	def build_summary_saver(self):
-		if self.enable_log or self.save_weights or self.save_meta_data:
+		if self.enable_log:
 			self.summary_op = tf.summary.merge_all()
 			self.train_writer = tf.summary.FileWriter(self.tf_log_dir + "/train")
 			self.test_writer = tf.summary.FileWriter(self.tf_log_dir + "/test", graph=self.sess.graph)

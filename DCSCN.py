@@ -274,10 +274,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 		if self.use_l1_loss:
 			self.mse = tf.reduce_mean(tf.square(diff), name="mse")
-			self.loss = tf.reduce_mean(tf.abs(diff), name="loss")
+			self.image_loss = tf.reduce_mean(tf.abs(diff), name="loss")
 		else:
 			self.mse = tf.reduce_mean(tf.square(diff), name="mse")
-			self.loss = self.mse
+			self.image_loss = self.mse
 
 		if self.l2_decay > 0:
 			l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
@@ -286,19 +286,19 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			if self.enable_log:
 				tf.summary.scalar("L2WeightDecayLoss/" + self.name, l2_norm_loss)
 
-			self.total_loss = self.loss + l2_norm_loss
+			self.loss = self.image_loss + l2_norm_loss
 		else:
-			self.total_loss = self.loss
+			self.loss = self.image_loss
 
 		if self.enable_log:
-			tf.summary.scalar("Loss/" + self.name, self.total_loss)
+			tf.summary.scalar("Loss/" + self.name, self.loss)
 
 		if self.batch_norm:
 			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 			with tf.control_dependencies(update_ops):
-				self.training_optimizer = self.add_optimizer_op(self.total_loss, self.lr_input)
+				self.training_optimizer = self.add_optimizer_op(self.loss, self.lr_input)
 		else:
-			self.training_optimizer = self.add_optimizer_op(self.total_loss, self.lr_input)
+			self.training_optimizer = self.add_optimizer_op(self.loss, self.lr_input)
 
 		util.print_num_of_total_parameters(output_detail=True)
 
@@ -328,19 +328,21 @@ class SuperResolution(tf_graph.TensorflowGraph):
 			print("Optimizer arg should be one of [gd, adadelta, adagrad, adam, momentum, rmsprop].")
 			return None
 
-		if self.clipping_norm > 0 or self.enable_log:
+		if self.clipping_norm > 0 or self.save_weights:
 			trainables = tf.trainable_variables()
 			grads = tf.gradients(loss, trainables)
-			clipped_grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
-			grad_var_pairs = zip(clipped_grads, trainables)
-			training_optimizer = optimizer.apply_gradients(grad_var_pairs)
 
-			if self.enable_log and self.save_weights:
+			if self.save_weights:
 				for i in range(len(grads)):
 					mean = tf.reduce_mean(tf.abs(grads[i]))
 					tf.summary.scalar("%s/mean/%s" % (grads[i].name, self.name), mean)
 					max_grad = tf.reduce_max(tf.abs(grads[i]))
 					tf.summary.scalar("%s/max/%s" % (grads[i].name, self.name), max_grad)
+
+		if self.clipping_norm > 0:
+			clipped_grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
+			grad_var_pairs = zip(clipped_grads, trainables)
+			training_optimizer = optimizer.apply_gradients(grad_var_pairs)
 		else:
 			training_optimizer = optimizer.minimize(loss)
 
@@ -352,7 +354,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		             self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
 
 		if self.use_l1_loss:
-			_, loss = self.sess.run([self.training_optimizer, self.loss], feed_dict=feed_dict)
+			_, loss = self.sess.run([self.training_optimizer, self.image_loss], feed_dict=feed_dict)
 			self.training_loss_sum += loss
 		else:
 			_, mse = self.sess.run([self.training_optimizer, self.mse], feed_dict=feed_dict)
@@ -363,6 +365,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
 		self.step += 1
 
 	def log_to_tensorboard(self, test_filename, psnr, save_meta_data=True):
+
+		if self.enable_log is False:
+			return
 
 		# todo
 		save_meta_data = False
