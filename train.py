@@ -17,6 +17,7 @@ from helper import args, utilty as util
 
 FLAGS = args.get()
 
+
 def main(not_parsed_args):
 	if len(not_parsed_args) > 1:
 		print("Unknown args:%s" % not_parsed_args)
@@ -40,7 +41,6 @@ def main(not_parsed_args):
 	total_psnr = total_mse = 0
 
 	for i in range(FLAGS.tests):
-
 		mse = train(model, FLAGS, i)
 		psnr = util.get_psnr(mse, max_value=FLAGS.max_value)
 		total_mse += mse
@@ -51,13 +51,13 @@ def main(not_parsed_args):
 		logging.info("MSE:%f, PSNR:%f\n" % (mse, psnr))
 
 	if FLAGS.tests > 1:
-		logging.info("\n=== Final Average [%s] MSE:%f, PSNR:%f ===" % (FLAGS.test_dataset, total_mse / FLAGS.tests, total_psnr / FLAGS.tests))
+		logging.info("\n=== Final Average [%s] MSE:%f, PSNR:%f ===" % (
+		FLAGS.test_dataset, total_mse / FLAGS.tests, total_psnr / FLAGS.tests))
 
 	model.copy_log_to_archive("archive")
 
 
 def train(model, flags, trial):
-
 	test_filenames = util.get_files_in_directory(flags.data_dir + "/" + flags.test_dataset)
 
 	model.init_all_variables()
@@ -91,6 +91,8 @@ def train(model, flags, trial):
 			model.init_epoch_index()
 
 	model.end_train_step()
+
+	# save last generation anyway
 	model.save_model(trial=trial, output_log=True)
 
 	# outputs result

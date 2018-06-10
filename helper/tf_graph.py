@@ -44,7 +44,6 @@ class TensorflowGraph:
 		self.save_images_num = flags.save_images_num
 		self.save_meta_data = flags.save_meta_data and flags.enable_log
 		self.log_weight_image_num = 32
-		self.keep_generations = flags.keep_generations
 
 		# Environment (all directory name should not contain '/' after )
 		self.checkpoint_dir = flags.checkpoint_dir
@@ -175,7 +174,8 @@ class TensorflowGraph:
 	def build_pixel_shuffler_layer(self, name, h, scale, filters, activator=None):
 
 		with tf.variable_scope(name):
-			self.build_conv(name+"_CNN", h, self.cnn_size, filters, scale * scale * filters, use_batch_norm=False, use_bias=True)
+			self.build_conv(name + "_CNN", h, self.cnn_size, filters, scale * scale * filters, use_batch_norm=False,
+			                use_bias=True)
 			self.H.append(tf.depth_to_space(self.H[-1], scale))
 			self.build_activator(self.H[-1], filters, activator, base_name=name)
 
@@ -223,6 +223,7 @@ class TensorflowGraph:
 			filename = self.checkpoint_dir + "/" + name + ".ckpt"
 
 		self.saver.save(self.sess, filename)
+
 		if output_log:
 			logging.info("Model saved [%s]." % filename)
 		else:
@@ -234,4 +235,4 @@ class TensorflowGraph:
 			self.train_writer = tf.summary.FileWriter(self.tf_log_dir + "/train")
 			self.test_writer = tf.summary.FileWriter(self.tf_log_dir + "/test", graph=self.sess.graph)
 
-		self.saver = tf.train.Saver(max_to_keep=self.keep_generations)
+		self.saver = tf.train.Saver(max_to_keep=None)
