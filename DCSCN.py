@@ -334,10 +334,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
 			if self.save_weights:
 				for i in range(len(grads)):
-					mean = tf.reduce_mean(tf.abs(grads[i]))
-					tf.summary.scalar("%s/mean/%s" % (grads[i].name, self.name), mean)
-					max_grad = tf.reduce_max(tf.abs(grads[i]))
-					tf.summary.scalar("%s/max/%s" % (grads[i].name, self.name), max_grad)
+					mean_var = tf.reduce_mean(grads[i])
+					mean_abs_var = tf.reduce_mean(tf.abs(grads[i]))
+					stddev_var = tf.sqrt(tf.reduce_mean(tf.square(grads[i] - mean_var)))
+					tf.summary.scalar("%s/mean_abs/%s" % (grads[i].name, self.name), mean_abs_var)
+					tf.summary.scalar("%s/stddev/%s" % (grads[i].name, self.name), stddev_var)
 
 		if self.clipping_norm > 0:
 			clipped_grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)

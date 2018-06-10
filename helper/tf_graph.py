@@ -236,3 +236,4 @@ class TensorflowGraph:
 			self.test_writer = tf.summary.FileWriter(self.tf_log_dir + "/test", graph=self.sess.graph)
 
 		self.saver = tf.train.Saver(max_to_keep=None)
+
