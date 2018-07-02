@@ -92,38 +92,62 @@ python sr.py --file=your_file.png
 python sr.py --file=your_file.png --layers=8 --filters=96
 ```
 
-## How to train
+## How to train with your own dataset
 
-You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg. There are some other hyper paramters to train, check [args.py](https://github.com/jiny2001/dcscn-super-resolution/blob/master/helper/args.py) to use other training parameters.
+You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg. Since There are some important hyper paramters to train, please check [args.py](https://github.com/jiny2001/dcscn-super-resolution/blob/master/helper/args.py) to use other training parameters.
 
-Each training and evaluation result will be added to **log.txt**.
+Once training parameters has been given, **"model name"** will be defined by the parameters. For ex, when you use default parameters, **"model name"** would be like **"dcscn_L12_F196to48_NIN_A64_PS_R1F32"** and this name represents model structure.
 
 ```
 # training for x2 with bsd200 dataset
 python train.py --dataset=bsd200 --training_images=80000
 
-# training for x2 with small model
-python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
-
-# training for x2 with tiny model for test
-python train.py --dataset=set5 --layers=5 --filters=32 --use_nin=false --training_images=10000
+# training for x3 scale with your own dataset
+python train.py --scale=3 --dataset=[your own data directory]
 
 # training for x2 with transposed CNN instead of using Pixel Shuffler layer for up-sampling
 python train.py --dataset=bsd200 --training_images=80000 --pixel_shuffler=false
-
-# training for x3 scale
-python train.py --scale=3
 ```
+
+* Each training and evaluation summary will be added to **log.txt**.
+* Model will be saved under **models/"model name".ckpt**
+* Evaluation result images would be generated under **output/"model name"/data/[dataset directory name]**
+* When you use evaluate.py / sr.py, please use completely same args with training so that the script can load your own learned **"model name".ckpt**.
+
+
+### Using small model for training/test (for CPU)
+
+In case 1)you're using CPU, 2)training data is small or 3)just want to test if it works, I recommend you to use smaller model. And 8 layers with 96 filters model has enough performance for my DCSCN. When you're using CPU, 4-6 layers with 32-64 filters would be a good starting point.
+
+```
+# training for x2 with smaller model
+python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
+
+# training for x2 with tiny model for test
+python train.py --dataset=set5 --layers=4 --filters=32 --use_nin=false --training_images=10000
+```
+
+### Speeding up training
 
 Please note loading/converting batch images for each training is a bit heavy process since there will be a lot of iterations. Here are some options. You can use those option to reduce training time significantly.
 
 1. Use "convert_y.py" to convert your dataset images to Y-channel monochrome bitmap.
+
 If your training data is compressed like PNG or jpeg and the image resolution is larger, you must convert it before. Especially for DIV2K dataset, you can save a big time for decompressing and converting image process.
 Also in this mode, each input batch image may be flipped horizontally by the probability of 50%.
 
 2. Use "--build_batch True" option for smaller dataset
-If your dataset is small enough to store in CPU memory, please use this. It will build a batch images before the training. When you're using HDD(not SSD) and the dataset is not large like (Yang91 + BSD200) augmented by 8 methods, this option can avoid loading/converting process for each batch.
+
+If your dataset is small enough to store in CPU memory, please use this. It will split source images into batch images and save to reuse before the training. When you're using HDD(not SSD) and the dataset is not large like (Yang91 + BSD200) augmented by 8 methods, this option is nice. It will avoid loading/converting process for each batch.
+
 In this case, batch image positions are adjusted and limited to be on the grid with the half of batch_image_size. However, as far as I experimented, that doesn't affect to PSNR performance so much.
+
+### How can I set --training_images parameter?
+
+--training_images is, the number of patches trained in one epoch. So, usually, it would be better to be same as the number of input training patch images. When you use build_batch=True, the trainer will create a patch images under **"batch_data"** before training so that you can see how much batch images are in the train data. 
+
+However, it really depends on the image type/variance and model complexity. You can begin with very small value like 1,000 and if the result is not enough, you can increase it until 100,000 to 200,000.
+
 
 # Important parameters
 
