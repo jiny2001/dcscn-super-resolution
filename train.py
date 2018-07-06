@@ -41,8 +41,7 @@ def main(not_parsed_args):
 	total_psnr = total_mse = 0
 
 	for i in range(FLAGS.tests):
-		mse = train(model, FLAGS, i)
-		psnr = util.get_psnr(mse, max_value=FLAGS.max_value)
+		mse, psnr = train(model, FLAGS, i)
 		total_mse += mse
 		total_psnr += psnr
 
@@ -103,7 +102,7 @@ def train(model, flags, trial):
 			if test_data != flags.test_dataset:
 				test(model, test_data)
 
-	return mse
+	return mse, psnr
 
 
 def test(model, test_data):

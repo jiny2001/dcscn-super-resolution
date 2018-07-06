@@ -171,13 +171,13 @@ class TensorflowGraph:
 		self.Weights.append(w)
 		self.H.append(h)
 
-	def build_pixel_shuffler_layer(self, name, h, scale, filters, activator=None):
+	def build_pixel_shuffler_layer(self, name, h, scale, input_filters, output_filters, activator=None):
 
 		with tf.variable_scope(name):
-			self.build_conv(name + "_CNN", h, self.cnn_size, filters, scale * scale * filters, use_batch_norm=False,
+			self.build_conv(name + "_CNN", h, self.cnn_size, input_filters, scale * scale * output_filters, use_batch_norm=False,
 			                use_bias=True)
 			self.H.append(tf.depth_to_space(self.H[-1], scale))
-			self.build_activator(self.H[-1], filters, activator, base_name=name)
+			self.build_activator(self.H[-1], output_filters, activator, base_name=name)
 
 	def copy_log_to_archive(self, archive_name):
 

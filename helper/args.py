@@ -28,6 +28,7 @@ flags.DEFINE_integer("reconstruct_filters", 32, "Number of Reconstruct CNN Filte
 flags.DEFINE_float("dropout_rate", 0.8, "Output nodes should be kept by this probability. If 1, don't use dropout.")
 flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, prelu, sigmoid, tanh, selu]")
 flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler instead of transposed CNN")
+flags.DEFINE_integer("pixel_shuffler_filters", 0, "Num of Pixel Shuffler output channels. 0 means use same channels as input.")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
 flags.DEFINE_boolean("batch_norm", False, "use batch normalization after each CNNs")
 
