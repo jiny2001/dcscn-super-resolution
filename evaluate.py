@@ -12,10 +12,10 @@ see output/[model_name]/data/[your test data]/ for checking result images.
 
 Also you must put same model args as you trained.
 For ex, if you trained like
-python3 train.py --layers 4  --filters 24 --dataset test --training_images 400
+python3 train.py --layers=4  --filters=24 --test_dataset=test --training_images=4000
 
 Then you must run evaluate.py like below.
-python3 evaluate.py --layers 4  --filters 24 --dataset new_test_data
+python3 evaluate.py --layers=4  --filters=24 --test_dataset=new_test_data
 """
 
 import logging

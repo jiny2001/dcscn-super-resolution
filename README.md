@@ -76,6 +76,9 @@ python evaluate.py --test_dataset=set5 --save_results=true --layers=8 --filters=
 
 # evaluating all(set5,set14,bsd100) dataset
 python evaluate.py --test_dataset=all
+
+# evaluate our compact version of DCSCN (c-DCSCN)
+--scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --test_dataset=all
 ```
 
 ## Apply to your own image
@@ -126,6 +129,13 @@ python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
 # training for x2 with tiny model for test
 python train.py --dataset=set5 --layers=4 --filters=32 --use_nin=false --training_images=10000
 ```
+
+We propose compact verison of DCSCN (c-DCSCN) in my paper. When you want to try training with this model, use these option below. (x2 scale)
+```
+python train.py --scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --dataset=yang_bsd_8 --training_images=228688 --batch_image_size=32 --build_batch=True --do_benchmark=True --pixel_shuffler_filters=1
+```
+
+
 
 ### Speeding up training
 
@@ -204,7 +214,7 @@ During the training, tensorboard log is available under **tf_log** directory.
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/model_v2.png" width="400">
 
-You can check test PSNR transition during training. Also mean / std / histogram of every weights and biases are logged at tensorboard.
+You can check test PSNR transition during training. Also mean / std / histogram of every weights/biases and gradients are logged at tensorboard.
 
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/tensorboard_1.png" width="800">
 <img src="https://raw.githubusercontent.com/jiny2001/dcscn-super-resolution/master/documents/tensorboard_2.png" width="800">
