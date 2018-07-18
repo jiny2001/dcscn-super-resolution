@@ -47,17 +47,17 @@ tensorflow > 1.0, scipy, numpy and pillow
 
 The sample result of default parameter is here. The model is trained by DIV2k with 150,000 48x48 images for one epoch.
 
-| Dataset | Scale | Bicubic | DRCN | VDSR | DCSCN (ver2) | DRRN |
-|:-------:|:-------:|:-------:|:----:|:----:|:----:|:----:|
-| set5 | x2 | 33.66 | 37.63 | 37.53 | 37.79 | 37.74 |
-|  | x3 | 30.39 | 33.82 | 33.66 | 34.06 | 34.03 |
-|  | x4 | 28.42 | 31.53 | 31.35 | 31.72 | 31.68 |
-| set14 | x2 | 30.24 | 33.04 | 33.03 | 33.25 | 33.23 |
-|  | x3 | 27.55 | 29.76 | 29.77 | 29.95 | 29.96 |
-|  | x4 | 26.00 | 28.02 | 28.01 | 28.25 | 28.21 |
-| bsd100 | x2 | 29.56 | 31.85 | 31.90 | 32.00 | 32.05 |
-|  | x3 | 27.21 | 28.80 | 28.82 | 28.89 | 28.95 |
-|  | x4 | 25.96 | 27.23 | 27.29 | 27.35 | 27.38 |
+| Dataset | Scale | Bicubic | c-DCSCN | DRCN | VDSR | DCSCN (ver2) | DRRN |
+|:-------:|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|
+| set5 | x2 | 33.66 | 37.11 | 37.63 | 37.53 | 37.79 | 37.74 |
+|  | x3 | 30.39 | 33.10 | 33.82 | 33.66 | 34.06 | 34.03 |
+|  | x4 | 28.42 | 30.86 | 31.53 | 31.35 | 31.72 | 31.68 |
+| set14 | x2 | 30.24 | 32.77 | 33.04 | 33.03 | 33.25 | 33.23 |
+|  | x3 | 27.55 | 29.45 | 29.76 | 29.77 | 29.95 | 29.96 |
+|  | x4 | 26.00 | 27.74 | 28.02 | 28.01 | 28.25 | 28.21 |
+| bsd100 | x2 | 29.56 | 31.56 | 31.85 | 31.90 | 32.00 | 32.05 |
+|  | x3 | 27.21 | 28.48 | 28.80 | 28.82 | 28.89 | 28.95 |
+|  | x4 | 25.96 | 27.04 | 27.23 | 27.29 | 27.35 | 27.38 |
 
 Results and model will be uploaded in some days!!
 
@@ -78,7 +78,7 @@ python evaluate.py --test_dataset=set5 --save_results=true --layers=8 --filters=
 python evaluate.py --test_dataset=all
 
 # evaluate our compact version of DCSCN (c-DCSCN)
---scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --test_dataset=all
+python evaluate.py --scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --test_dataset=all
 ```
 
 ## Apply to your own image

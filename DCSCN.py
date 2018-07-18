@@ -244,7 +244,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             else:
                 output_channels = input_channels
             if self.scale == 4:
-                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, input_channels, output_channels)
+                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, input_channels, input_channels)
                 self.build_pixel_shuffler_layer("Up-PS2", self.H[-1], 2, input_channels, output_channels)
             else:
                 self.build_pixel_shuffler_layer("Up-PS", self.H[-1], self.scale, input_channels, output_channels)
