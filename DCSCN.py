@@ -260,7 +260,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
                         self.output_channels)
 
-        self.y_ = self.H[-1] + self.x2
+        self.y_ = tf.add(self.H[-1], self.x2, name="output")
 
         if self.save_weights:
             with tf.name_scope("Y_"):
