@@ -180,7 +180,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
     def build_input_batch(self):
 
         for i in range(self.batch_num):
-            self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image()
+            self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(self.max_value)
 
     def build_graph(self):
 
@@ -490,7 +490,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         for filename in test_filenames:
             mse = self.do_for_evaluate(filename, print_console=False)
             total_mse += mse
-            total_psnr += util.get_psnr(mse, max_value=self.max_value)
+            total_psnr += util.get_psnr(mse)
 
         return total_mse / len(test_filenames), total_psnr / len(test_filenames)
 
@@ -499,12 +499,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
         h, w = input_image.shape[:2]
         ch = input_image.shape[2] if len(input_image.shape) > 2 else 1
 
-        if self.max_value != 255.0:
-            input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
-
         if bicubic_input_image is None:
             bicubic_input_image = util.resize_image_by_pil(input_image, self.scale,
                                                            resampling_method=self.resampling_method)
+        if self.max_value != 255.0:
+            input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
+            bicubic_input_image = np.multiply(bicubic_input_image, self.max_value / 255.0)  # type: np.ndarray
 
         if self.self_ensemble > 1:
             output = np.zeros([self.scale * h, self.scale * w, 1])
