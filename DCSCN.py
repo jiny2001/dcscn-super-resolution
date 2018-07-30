@@ -341,9 +341,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
             if self.save_weights:
                 for i in range(len(grads)):
                     mean_var = tf.reduce_mean(grads[i])
-                    mean_abs_var = tf.reduce_mean(tf.abs(grads[i]))
                     stddev_var = tf.sqrt(tf.reduce_mean(tf.square(grads[i] - mean_var)))
-                    tf.summary.scalar("%s/mean_abs/%s" % (grads[i].name, self.name), mean_abs_var)
+                    tf.summary.scalar("%s/mean/%s" % (grads[i].name, self.name), mean_var)
                     tf.summary.scalar("%s/stddev/%s" % (grads[i].name, self.name), stddev_var)
 
         if self.clipping_norm > 0:
@@ -423,7 +422,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         self.train_writer.add_summary(summary_str, self.epochs_completed)
         if not self.use_l1_loss:
-            util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
+            if self.training_step != 0:
+                util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
                                   self.epochs_completed)
         util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
         self.train_writer.flush()

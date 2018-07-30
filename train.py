@@ -69,6 +69,10 @@ def train(model, flags, trial):
     model_updated = True
     min_mse = None
 
+    mse, psnr = model.evaluate(test_filenames)
+    model.print_status(mse, psnr, log=True)
+    model.log_to_tensorboard(test_filenames[0], psnr, save_meta_data=True)
+
     while model.lr > flags.end_lr:
 
         model.build_input_batch()
