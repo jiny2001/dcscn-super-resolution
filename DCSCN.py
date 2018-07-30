@@ -386,6 +386,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
         input_image = util.resize_image_by_pil(org_image, 1.0 / self.scale, resampling_method=self.resampling_method)
         bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
 
+        if self.max_value != 255.0:
+            input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
+            bicubic_image = np.multiply(bicubic_image, self.max_value / 255.0)  # type: np.ndarray
+            org_image = np.multiply(org_image, self.max_value / 255.0)  # type: np.ndarray
+
         feed_dict = {self.x: input_image.reshape([1, input_image.shape[0], input_image.shape[1], input_image.shape[2]]),
                      self.x2: bicubic_image.reshape(
                          [1, bicubic_image.shape[0], bicubic_image.shape[1], bicubic_image.shape[2]]),
