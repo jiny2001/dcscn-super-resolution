@@ -172,8 +172,11 @@ if ('scalars' in summaries):
 				data = [v.wall_time, v.step];
 				for s in scalarTags:
 					scalarTag = ea.Scalars(s);
-					S = scalarTag[i];
-					data.append(S.value);
+					if len(scalarTag) > i:
+						S = scalarTag[i];
+						data.append(S.value);
+					else:
+						data.append("");
 				logWriter.writerow(data);
 
 print(' ');
