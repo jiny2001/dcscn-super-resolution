@@ -7,15 +7,23 @@ Functions for evaluating model performance
 Put your images under data/[your dataset name]/ and specify [your dataset name] for --test_dataset.
 This script will create LR images from your test dataset and evaluate the model's performance.
 
---save_results True: will provide generated HR images and bi-cubic HR images.
+--save_results=True: will provide generated HR images and bi-cubic HR images.
 see output/[model_name]/data/[your test data]/ for checking result images.
 
 Also you must put same model args as you trained.
-For ex, if you trained like
-python3 train.py --layers=4  --filters=24 --test_dataset=test --training_images=4000
+
+For ex, if you trained like below,
+> python train.py --scale=3
 
 Then you must run evaluate.py like below.
-python3 evaluate.py --layers=4  --filters=24 --test_dataset=new_test_data
+> python evaluate.py --scale=3 --file=your_image_file_path
+
+
+If you trained like below,
+> python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
+
+Then you must run evaluate.py like below.
+> python evaluate.py --layers=8 --filters=96 --file=your_image_file_path
 """
 
 import logging
