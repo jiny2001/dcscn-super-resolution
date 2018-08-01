@@ -6,15 +6,24 @@ Ver: 2.0
 
 Apply Super Resolution for image file.
 
---file [your image filename]: will generat HR images.
+--file=[your image filename]: will generate HR images.
 see output/[model_name]/ for checking result images.
 
 Also you must put same model args as you trained.
-For ex, if you trained like
-python3 train.py --layers 4 --filters 24 --dataset test --training_images 400
 
-Then you must run evaluate.py like below.
-python3 evaluate.py --layers 4 --filters 24 --file your_image_file_path
+For ex, if you trained like below,
+> python train.py --scale=3
+
+Then you must run sr.py like below.
+> python sr.py --scale=3 --file=your_image_file_path
+
+
+If you trained like below,
+> python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
+
+Then you must run sr.py like below.
+> python sr.py --layers=8 --filters=96 --file=your_image_file_path
+
 """
 
 import tensorflow as tf

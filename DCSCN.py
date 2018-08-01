@@ -341,9 +341,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
             if self.save_weights:
                 for i in range(len(grads)):
                     mean_var = tf.reduce_mean(grads[i])
-                    mean_abs_var = tf.reduce_mean(tf.abs(grads[i]))
                     stddev_var = tf.sqrt(tf.reduce_mean(tf.square(grads[i] - mean_var)))
-                    tf.summary.scalar("%s/mean_abs/%s" % (grads[i].name, self.name), mean_abs_var)
+                    tf.summary.scalar("%s/mean/%s" % (grads[i].name, self.name), mean_var)
                     tf.summary.scalar("%s/stddev/%s" % (grads[i].name, self.name), stddev_var)
 
         if self.clipping_norm > 0:
@@ -387,6 +386,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
         input_image = util.resize_image_by_pil(org_image, 1.0 / self.scale, resampling_method=self.resampling_method)
         bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
 
+        if self.max_value != 255.0:
+            input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
+            bicubic_image = np.multiply(bicubic_image, self.max_value / 255.0)  # type: np.ndarray
+            org_image = np.multiply(org_image, self.max_value / 255.0)  # type: np.ndarray
+
         feed_dict = {self.x: input_image.reshape([1, input_image.shape[0], input_image.shape[1], input_image.shape[2]]),
                      self.x2: bicubic_image.reshape(
                          [1, bicubic_image.shape[0], bicubic_image.shape[1], bicubic_image.shape[2]]),
@@ -423,7 +427,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         self.train_writer.add_summary(summary_str, self.epochs_completed)
         if not self.use_l1_loss:
-            util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
+            if self.training_step != 0:
+                util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
                                   self.epochs_completed)
         util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
         self.train_writer.flush()
