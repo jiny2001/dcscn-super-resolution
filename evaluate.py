@@ -68,7 +68,7 @@ def test(model, test_data):
 		else:
 			mse = model.do_for_evaluate(filename, print_console=False)
 		total_mse += mse
-		total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
+		total_psnr += util.get_psnr(mse)
 
 	logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
 		test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
