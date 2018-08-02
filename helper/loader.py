@@ -307,7 +307,8 @@ class DynamicDataSets:
         self.index += 1
         return image_no
 
-    def load_batch_image(self):
+    def load_batch_image(self, max_value):
+
         """ index won't be used. """
 
         image = None
@@ -319,6 +320,13 @@ class DynamicDataSets:
 
         input_image = util.resize_image_by_pil(image, 1 / self.scale)
         input_bicubic_image = util.resize_image_by_pil(input_image, self.scale)
+
+        if max_value != 255:
+            scale = max_value / 255.0
+            input_image = np.multiply(input_image, scale)
+            input_bicubic_image = np.multiply(input_bicubic_image, scale)
+            image = np.multiply(image, scale)
+
         return input_image, input_bicubic_image, image
 
     def load_random_patch(self, filename):
