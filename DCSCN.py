@@ -276,18 +276,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
 
-        diff = self.y_ - self.y
+        diff = tf.subtract(self.y_, self.y, "diff")
 
         if self.use_l1_loss:
-            self.mse = tf.reduce_mean(tf.square(diff), name="mse")
-            self.image_loss = tf.reduce_mean(tf.abs(diff), name="loss")
+            self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
+            self.image_loss = tf.reduce_mean(tf.abs(diff, name="diff_abs"), name="image_loss")
         else:
-            self.mse = tf.reduce_mean(tf.square(diff), name="mse")
-            self.image_loss = self.mse
+            self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
+            self.image_loss = tf.identity(self.mse, name="image_loss")
 
         if self.l2_decay > 0:
             l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
-            # l1_norm_losses = [tf.reduce_sum(tf.abs(w)) for w in self.weights]  # l1 loss
             l2_norm_loss = self.l2_decay * tf.add_n(l2_norm_losses)
             if self.enable_log:
                 tf.summary.scalar("L2WeightDecayLoss/" + self.name, l2_norm_loss)
@@ -359,13 +358,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
         feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_bicubic, self.y: self.batch_true,
                      self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
 
-        if self.use_l1_loss:
-            _, loss = self.sess.run([self.training_optimizer, self.image_loss], feed_dict=feed_dict)
-            self.training_loss_sum += loss
-        else:
-            _, mse = self.sess.run([self.training_optimizer, self.mse], feed_dict=feed_dict)
-            self.training_loss_sum += mse
-            self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
+        _, image_loss, mse = self.sess.run([self.training_optimizer, self.image_loss, self.mse], feed_dict=feed_dict)
+        self.training_loss_sum += image_loss
+        self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
 
         self.training_step += 1
         self.step += 1
