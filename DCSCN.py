@@ -180,7 +180,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
     def build_input_batch(self):
 
         for i in range(self.batch_num):
-            self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(self.max_value)
+            self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(
+                self.max_value)
 
     def build_graph(self):
 
@@ -429,7 +430,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         if not self.use_l1_loss:
             if self.training_step != 0:
                 util.log_scalar_value(self.train_writer, 'PSNR', self.training_psnr_sum / self.training_step,
-                                  self.epochs_completed)
+                                      self.epochs_completed)
         util.log_scalar_value(self.train_writer, 'LR', self.lr, self.epochs_completed)
         self.train_writer.flush()
 

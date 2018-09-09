@@ -18,7 +18,8 @@ flags.DEFINE_integer("scale", 2, "Scale factor for Super Resolution (should be 2
 flags.DEFINE_integer("layers", 12, "Number of layers of feature xxtraction CNNs")
 flags.DEFINE_integer("filters", 196, "Number of filters of first feature-extraction CNNs")
 flags.DEFINE_integer("min_filters", 48, "Number of filters of last feature-extraction CNNs")
-flags.DEFINE_float("filters_decay_gamma", 1.5, "Number of CNN filters are decayed from [filters] to [min_filters] by this gamma")
+flags.DEFINE_float("filters_decay_gamma", 1.5,
+                   "Number of CNN filters are decayed from [filters] to [min_filters] by this gamma")
 flags.DEFINE_boolean("use_nin", True, "Use Network In Network")
 flags.DEFINE_integer("nin_filters", 64, "Number of CNN filters in A1 at Reconstruction network")
 flags.DEFINE_integer("nin_filters2", 32, "Number of CNN filters in B1 and B2 at Reconstruction net.")
@@ -28,7 +29,8 @@ flags.DEFINE_integer("reconstruct_filters", 32, "Number of Reconstruct CNN Filte
 flags.DEFINE_float("dropout_rate", 0.8, "Output nodes should be kept by this probability. If 1, don't use dropout.")
 flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, prelu, sigmoid, tanh, selu]")
 flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler instead of transposed CNN")
-flags.DEFINE_integer("pixel_shuffler_filters", 0, "Num of Pixel Shuffler output channels. 0 means use same channels as input.")
+flags.DEFINE_integer("pixel_shuffler_filters", 0,
+                     "Num of Pixel Shuffler output channels. 0 means use same channels as input.")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
 flags.DEFINE_boolean("batch_norm", False, "use batch normalization after each CNNs")
 
@@ -53,7 +55,8 @@ flags.DEFINE_boolean("use_l1_loss", False, "Use L1 Error as loss function instea
 flags.DEFINE_float("initial_lr", 0.002, "Initial learning rate")
 flags.DEFINE_float("lr_decay", 0.5, "Learning rate decay rate")
 flags.DEFINE_integer("lr_decay_epoch", 9, "After this epochs are completed, learning rate will be decayed by lr_decay.")
-flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate. If the current learning rate gets lower than this value, then training will be finished.")
+flags.DEFINE_float("end_lr", 2e-5, "Training end learning rate. If the current learning rate gets lower than this"
+                                   "value, then training will be finished.")
 
 # Dataset or Others
 flags.DEFINE_string("dataset", "bsd200", "Training dataset dir. [yang91, general100, bsd200, other]")
@@ -64,8 +67,10 @@ flags.DEFINE_boolean("do_benchmark", False, "Evaluate the performance for set5, 
 # Image Processing
 flags.DEFINE_float("max_value", 255, "For normalize image pixel value")
 flags.DEFINE_integer("channels", 1, "Number of image channels used. Now it should be 1. using only Y from YCbCr.")
-flags.DEFINE_integer("psnr_calc_border_size", -1, "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
-flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Makes training significantly faster but the patches are limited to be on the grid.")
+flags.DEFINE_integer("psnr_calc_border_size", -1,
+                     "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
+flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Makes training significantly faster but "
+                                           "the patches are limited to be on the grid.")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")
@@ -88,10 +93,10 @@ flags.DEFINE_boolean("save_meta_data", False, "")
 
 
 def get():
-	print("Python Interpreter version:%s" % sys.version[:3])
-	print("tensorflow version:%s" % tf.__version__)
-	print("numpy version:%s" % np.__version__)
+    print("Python Interpreter version:%s" % sys.version[:3])
+    print("tensorflow version:%s" % tf.__version__)
+    print("numpy version:%s" % np.__version__)
 
-	# check which library you are using
-	# np.show_config()
-	return FLAGS
+    # check which library you are using
+    # np.show_config()
+    return FLAGS

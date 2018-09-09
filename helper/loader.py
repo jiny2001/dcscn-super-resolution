@@ -250,8 +250,8 @@ class BatchDataSets:
         else:
             scale = max_value / 255.0
             return np.multiply(self.input_images[number], scale), \
-                   np.multiply(self.input_interpolated_images[number], scale), \
-                   np.multiply(self.true_images[number], scale)
+                np.multiply(self.input_interpolated_images[number], scale), \
+                np.multiply(self.true_images[number], scale)
 
     def load_input_batch_image(self, image_number):
         image = misc.imread(self.batch_dir + "/" + INPUT_IMAGE_DIR + "/%06d.bmp" % image_number)

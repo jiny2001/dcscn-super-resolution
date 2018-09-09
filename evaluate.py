@@ -27,6 +27,7 @@ Then you must run evaluate.py like below.
 """
 
 import logging
+
 import tensorflow as tf
 
 import DCSCN
@@ -38,41 +39,41 @@ FLAGS = args.get()
 
 
 def main(not_parsed_args):
-	if len(not_parsed_args) > 1:
-		print("Unknown args:%s" % not_parsed_args)
-		exit()
+    if len(not_parsed_args) > 1:
+        print("Unknown args:%s" % not_parsed_args)
+        exit()
 
-	model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
-	model.build_graph()
-	model.build_summary_saver()
-	model.init_all_variables()
+    model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
+    model.build_graph()
+    model.build_summary_saver()
+    model.init_all_variables()
 
-	if FLAGS.test_dataset == "all":
-		test_list = ['set5', 'set14', 'bsd100']
-	else:
-		test_list = [FLAGS.test_dataset]
+    if FLAGS.test_dataset == "all":
+        test_list = ['set5', 'set14', 'bsd100']
+    else:
+        test_list = [FLAGS.test_dataset]
 
-	for i in range(FLAGS.tests):
-		model.load_model(FLAGS.load_model_name, trial=i, output_log=True if FLAGS.tests > 1 else False)
-		for test_data in test_list:
-			test(model, test_data)
+    for i in range(FLAGS.tests):
+        model.load_model(FLAGS.load_model_name, trial=i, output_log=True if FLAGS.tests > 1 else False)
+        for test_data in test_list:
+            test(model, test_data)
 
 
 def test(model, test_data):
-	test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
-	total_psnr = total_mse = 0
+    test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
+    total_psnr = total_mse = 0
 
-	for filename in test_filenames:
-		if FLAGS.save_results:
-			mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=True)
-		else:
-			mse = model.do_for_evaluate(filename, print_console=False)
-		total_mse += mse
-		total_psnr += util.get_psnr(mse)
+    for filename in test_filenames:
+        if FLAGS.save_results:
+            mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=True)
+        else:
+            mse = model.do_for_evaluate(filename, print_console=False)
+        total_mse += mse
+        total_psnr += util.get_psnr(mse)
 
-	logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
-		test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+    logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
+        test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
 
 
 if __name__ == '__main__':
-	tf.app.run()
+    tf.app.run()
