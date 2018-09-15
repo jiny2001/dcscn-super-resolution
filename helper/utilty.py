@@ -232,23 +232,29 @@ def resize_image_by_pil(image, scale, resampling_method="bicubic"):
 def load_image(filename, width=0, height=0, channels=0, alignment=0, print_console=True):
     if not os.path.isfile(filename):
         raise LoadError("File not found [%s]" % filename)
-    image = misc.imread(filename)
 
-    if len(image.shape) == 2:
-        image = image.reshape(image.shape[0], image.shape[1], 1)
-    if (width != 0 and image.shape[1] != width) or (height != 0 and image.shape[0] != height):
-        raise LoadError("Attributes mismatch")
-    if channels != 0 and image.shape[2] != channels:
-        raise LoadError("Attributes mismatch")
-    if alignment != 0 and ((width % alignment) != 0 or (height % alignment) != 0):
-        raise LoadError("Attributes mismatch")
+    try:
+        image = misc.imread(filename)
 
-    # if there is alpha plane, cut it
-    if image.shape[2] >= 4:
-        image = image[:, :, 0:3]
+        if len(image.shape) == 2:
+            image = image.reshape(image.shape[0], image.shape[1], 1)
+        if (width != 0 and image.shape[1] != width) or (height != 0 and image.shape[0] != height):
+            raise LoadError("Attributes mismatch")
+        if channels != 0 and image.shape[2] != channels:
+            raise LoadError("Attributes mismatch")
+        if alignment != 0 and ((width % alignment) != 0 or (height % alignment) != 0):
+            raise LoadError("Attributes mismatch")
 
-    if print_console:
-        print("Loaded [%s]: %d x %d x %d" % (filename, image.shape[1], image.shape[0], image.shape[2]))
+        # if there is alpha plane, cut it
+        if image.shape[2] >= 4:
+            image = image[:, :, 0:3]
+
+        if print_console:
+            print("Loaded [%s]: %d x %d x %d" % (filename, image.shape[1], image.shape[0], image.shape[2]))
+    except IndexError:
+        print("IndexError: file:[%s] shape[%s]" % (filename, image.shape))
+        return None
+
     return image
 
 
