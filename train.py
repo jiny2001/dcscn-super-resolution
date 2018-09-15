@@ -59,6 +59,9 @@ def main(not_parsed_args):
 
 def train(model, flags, trial):
     test_filenames = util.get_files_in_directory(flags.data_dir + "/" + flags.test_dataset)
+    if len(test_filenames) <= 0:
+        print("Can't load images from [%s]" % (flags.data_dir + "/" + flags.test_dataset))
+        exit()
 
     model.init_all_variables()
     if flags.load_model_name != "":

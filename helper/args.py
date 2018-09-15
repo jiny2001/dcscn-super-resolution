@@ -90,6 +90,7 @@ flags.DEFINE_boolean("save_weights", True, "Save weights and biases/gradients")
 flags.DEFINE_boolean("save_images", True, "Save CNN weights as images")
 flags.DEFINE_integer("save_images_num", 20, "Number of CNN images saved")
 flags.DEFINE_boolean("save_meta_data", False, "")
+flags.DEFINE_integer("gpu_device_id", 0, "Device ID of GPUs which will be used to compute.")
 
 
 def get():
