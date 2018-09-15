@@ -340,7 +340,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
             if self.save_weights:
                 for i in range(len(grads)):
-                    util.add_summaries("", self.name, grads[i], header_name=grads[i].name+"/", save_stddev=True,
+                    util.add_summaries("", self.name, grads[i], header_name=grads[i].name + "/", save_stddev=True,
                                        save_mean=True)
 
         if self.clipping_norm > 0:

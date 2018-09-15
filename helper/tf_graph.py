@@ -17,7 +17,6 @@ from helper import utilty as util
 class TensorflowGraph:
 
     def __init__(self, flags):
-
         self.name = ""
 
         # graph settings
@@ -58,23 +57,21 @@ class TensorflowGraph:
         self.complexity = 0
         self.pix_per_input = 1
 
-		self.init_session(flags.gpu_device_id)
+        self.init_session(flags.gpu_device_id)
 
-	def init_session(self, device_id=0):
-		config = tf.ConfigProto()
-		config.gpu_options.allow_growth = True    ## just for use the necesary memory of GPU
-		config.gpu_options.visible_device_list = str(device_id)  ## this values depends of numbers of GPUs
+    def init_session(self, device_id=0):
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True  ## just for use the necesary memory of GPU
+        config.gpu_options.visible_device_list = str(device_id)  ## this values depends of numbers of GPUs
 
         print("Session and graph initialized.")
         self.sess = tf.InteractiveSession(config=config, graph=tf.Graph())
 
-
-	def init_all_variables(self):
-		self.sess.run(tf.global_variables_initializer())
-		print("Model initialized.")
+    def init_all_variables(self):
+        self.sess.run(tf.global_variables_initializer())
+        print("Model initialized.")
 
     def build_activator(self, input_tensor, features: int, activator="", leaky_relu_alpha=0.1, base_name=""):
-
         features = int(features)
         if activator is None or "":
             return
@@ -102,7 +99,6 @@ class TensorflowGraph:
         return output
 
     def conv2d(self, input_tensor, w, stride, bias=None, use_batch_norm=False, name=""):
-
         output = tf.nn.conv2d(input_tensor, w, strides=[1, stride, stride, 1], padding="SAME", name=name + "_conv")
         self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
 
@@ -117,7 +113,6 @@ class TensorflowGraph:
 
     def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_bias=False,
                    activator=None, use_batch_norm=False, dropout_rate=1.0):
-
         with tf.variable_scope(name):
             w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
                             stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
@@ -174,7 +169,6 @@ class TensorflowGraph:
         self.H.append(h)
 
     def build_pixel_shuffler_layer(self, name, h, scale, input_filters, output_filters, activator=None):
-
         with tf.variable_scope(name):
             self.build_conv(name + "_CNN", h, self.cnn_size, input_filters, scale * scale * output_filters,
                             use_batch_norm=False,
@@ -183,7 +177,6 @@ class TensorflowGraph:
             self.build_activator(self.H[-1], output_filters, activator, base_name=name)
 
     def copy_log_to_archive(self, archive_name):
-
         archive_directory = self.tf_log_dir + '_' + archive_name
         model_archive_directory = archive_directory + '/' + self.name
         util.make_dir(archive_directory)
@@ -196,7 +189,6 @@ class TensorflowGraph:
             print("NG: tensorboard log archived to [%s]." % model_archive_directory)
 
     def load_model(self, name="", trial=0, output_log=False):
-
         if name == "" or name == "default":
             name = self.name
 
@@ -216,7 +208,6 @@ class TensorflowGraph:
             print("Model restored [ %s ]." % filename)
 
     def save_model(self, name="", trial=0, output_log=False):
-
         if name == "" or name == "default":
             name = self.name
 
