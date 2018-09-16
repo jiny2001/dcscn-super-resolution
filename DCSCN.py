@@ -75,7 +75,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.output_channels = 1
         self.psnr_calc_border_size = flags.psnr_calc_border_size
         if self.psnr_calc_border_size < 0:
-            self.psnr_calc_border_size = 2 + self.scale
+            self.psnr_calc_border_size = self.scale
 
         # Environment (all directory name should not contain tailing '/'  )
         self.batch_dir = flags.batch_dir
@@ -578,8 +578,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
             true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image)
 
             output_y_image = self.do(input_y_image, input_bicubic_y_image)
-            mse = util.compute_mse(true_ycbcr_image[:, :, 0:1], output_y_image,
-                                   border_size=self.psnr_calc_border_size)
+            psnr, ssim = util.compute_psnr_and_ssim(true_ycbcr_image[:, :, 0:1], output_y_image,
+                                                    border_size=self.psnr_calc_border_size)
             loss_image = util.get_loss_image(true_ycbcr_image[:, :, 0:1], output_y_image,
                                              border_size=self.psnr_calc_border_size)
 
@@ -601,16 +601,16 @@ class SuperResolution(tf_graph.TensorflowGraph):
             input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
                                                              resampling_method=self.resampling_method)
             output_image = self.do(input_image, input_bicubic_y_image)
-            mse = util.compute_mse(true_image, output_image, border_size=self.psnr_calc_border_size)
+            psnr, ssim = util.compute_psnr_and_ssim(true_image, output_image, border_size=self.psnr_calc_border_size)
             util.save_image(output_directory + file_path, true_image)
             util.save_image(output_directory + filename + "_result" + extension, output_image)
         else:
-            mse = 0
+            return None, None
 
         if print_console:
-            print("[%s] MSE:%f, PSNR:%f" % (filename, mse, util.get_psnr(mse)))
+            print("[%s] PSNR:%f, SSIM:%f" % (filename, psnr, ssim))
 
-        return mse
+        return psnr, ssim
 
     def do_for_evaluate(self, file_path, print_console=False):
 
@@ -625,7 +625,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
             input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
                                                              resampling_method=self.resampling_method)
             output_y_image = self.do(input_y_image, input_bicubic_y_image)
-            mse = util.compute_mse(true_y_image, output_y_image, border_size=self.psnr_calc_border_size)
+            psnr, ssim = util.compute_psnr_and_ssim(true_y_image, output_y_image,
+                                                    border_size=self.psnr_calc_border_size)
 
         elif true_image.shape[2] == 1 and self.channels == 1:
 
@@ -635,14 +636,36 @@ class SuperResolution(tf_graph.TensorflowGraph):
             input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
                                                              resampling_method=self.resampling_method)
             output_image = self.do(input_image, input_bicubic_y_image)
-            mse = util.compute_mse(true_image, output_image, border_size=self.psnr_calc_border_size)
+            psnr, ssim = util.compute_psnr_and_ssim(true_image, output_image, border_size=self.psnr_calc_border_size)
         else:
-            mse = 0
+            return None, None
 
         if print_console:
-            print("MSE:%f, PSNR:%f" % (mse, util.get_psnr(mse)))
+            print("[%s] PSNR:%f, SSIM:%f" % (file_path, psnr, ssim))
 
-        return mse
+        return psnr, ssim
+
+    def evaluate_bicubic(self, file_path, print_console=False):
+
+        true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
+
+        if true_image.shape[2] == 3 and self.channels == 1:
+            input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
+                                                   alignment=self.scale, convert_ycbcr=True)
+            true_image = util.convert_rgb_to_y(true_image)
+        elif true_image.shape[2] == 1 and self.channels == 1:
+            input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
+                                                   alignment=self.scale)
+        else:
+            return None, None
+
+        input_bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
+        psnr, ssim = util.compute_psnr_and_ssim(true_image, input_bicubic_image, border_size=self.psnr_calc_border_size)
+
+        if print_console:
+            print("PSNR:%f, SSIM:%f" % (psnr, ssim))
+
+        return psnr, ssim
 
     def init_train_step(self):
         self.lr = self.initial_lr

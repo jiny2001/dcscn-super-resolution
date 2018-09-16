@@ -17,6 +17,8 @@ from PIL import Image
 from os.path import isfile, join
 from scipy import misc
 
+from skimage.measure import compare_psnr, compare_ssim
+
 
 class Timer:
     def __init__(self, timer_count=100):
@@ -234,10 +236,8 @@ def load_image(filename, width=0, height=0, channels=0, alignment=0, print_conso
         raise LoadError("File not found [%s]" % filename)
 
     try:
-        image = misc.imread(filename)
+        image = np.atleast_3d(misc.imread(filename))
 
-        if len(image.shape) == 2:
-            image = image.reshape(image.shape[0], image.shape[1], 1)
         if (width != 0 and image.shape[1] != width) or (height != 0 and image.shape[0] != height):
             raise LoadError("Attributes mismatch")
         if channels != 0 and image.shape[2] != channels:
@@ -491,14 +491,14 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 
 
 def trim_image_as_file(image):
-    image = np.round(image)
+    image = np.rint(image)
     return np.clip(image, 0, 255)
 
 
-def compute_mse(image1, image2, border_size=0):
+def compute_psnr_and_ssim(image1, image2, border_size=0):
     """
-    Computes MSE from 2 images.
-    We round it and clip to 0 - 255. Then shave it from 6 + scale.
+    Computes PSNR and SSIM index from 2 images.
+    We round it and clip to 0 - 255. Then shave 'scale' pixels from each border.
     """
     if len(image1.shape) == 2:
         image1 = image1.reshape(image1.shape[0], image1.shape[1], 1)
@@ -511,12 +511,14 @@ def compute_mse(image1, image2, border_size=0):
     image1 = trim_image_as_file(image1)
     image2 = trim_image_as_file(image2)
 
-    diff = np.subtract(image1, image2)
     if border_size > 0:
-        diff = diff[border_size:-border_size, border_size:-border_size, :]
-    mse = np.mean(np.square(diff))
+        image1 = image1[border_size:-border_size, border_size:-border_size, :]
+        image2 = image2[border_size:-border_size, border_size:-border_size, :]
 
-    return mse
+    psnr = compare_psnr(image1, image2, data_range=255)
+    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+                        sigma=1.5, data_range=255)
+    return psnr, ssim
 
 
 def print_filter_weights(tensor):

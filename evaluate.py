@@ -33,7 +33,8 @@ import tensorflow as tf
 import DCSCN
 from helper import args, utilty as util
 
-args.flags.DEFINE_boolean("save_results", True, "Save result, bicubic and loss images")
+args.flags.DEFINE_boolean("save_results", True, "Save result, bicubic and loss images.")
+args.flags.DEFINE_boolean("compute_bicubic", False, "Compute bicubic performance.")
 
 FLAGS = args.get()
 
@@ -55,24 +56,43 @@ def main(not_parsed_args):
 
     for i in range(FLAGS.tests):
         model.load_model(FLAGS.load_model_name, trial=i, output_log=True if FLAGS.tests > 1 else False)
+
+        if FLAGS.compute_bicubic:
+            for test_data in test_list:
+                evaluate_bicubic(model, test_data)
+
         for test_data in test_list:
-            test(model, test_data)
+            evaluate_model(model, test_data)
 
 
-def test(model, test_data):
+def evaluate_bicubic(model, test_data):
     test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
-    total_psnr = total_mse = 0
+    total_psnr = total_ssim = 0
+
+    for filename in test_filenames:
+        psnr, ssim = model.evaluate_bicubic(filename, print_console=False)
+        total_psnr += psnr
+        total_ssim += ssim
+
+    logging.info("Bicubic Average [%s] PSNR:%f, SSIM:%f" % (
+        test_data, total_psnr / len(test_filenames), total_ssim / len(test_filenames)))
+
+
+def evaluate_model(model, test_data):
+    test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
+    total_psnr = total_ssim = 0
 
     for filename in test_filenames:
         if FLAGS.save_results:
-            mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=True)
+            psnr, ssim = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir,
+                                                           print_console=False)
         else:
-            mse = model.do_for_evaluate(filename, print_console=False)
-        total_mse += mse
-        total_psnr += util.get_psnr(mse)
+            psnr, ssim = model.do_for_evaluate(filename, print_console=False)
+        total_psnr += psnr
+        total_ssim += ssim
 
-    logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
-        test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+    logging.info("Model Average [%s] PSNR:%f, SSIM:%f" % (
+        test_data, total_psnr / len(test_filenames), total_ssim / len(test_filenames)))
 
 
 if __name__ == '__main__':
