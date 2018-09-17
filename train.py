@@ -37,30 +37,30 @@ def main(not_parsed_args):
     logging.info("\n" + str(sys.argv))
     logging.info("Test Data:" + FLAGS.test_dataset + " Training Data:" + FLAGS.dataset)
 
-    final_mse = final_psnr = 0
+    final_psnr = final_ssim = 0
     test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + FLAGS.test_dataset)
 
     for i in range(FLAGS.tests):
 
         train(model, FLAGS, i)
 
-        total_psnr = total_mse = 0
+        total_psnr = total_ssim = 0
         for filename in test_filenames:
-            mse = model.do_for_evaluate(filename, FLAGS.output_dir, output=i is (FLAGS.tests - 1))
-            total_mse += mse
-            total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
+            psnr, ssim = model.do_for_evaluate(filename, FLAGS.output_dir, output=i is (FLAGS.tests - 1))
+            total_psnr += psnr
+            total_ssim += ssim
 
         logging.info("\nTrial(%d) %s" % (i, util.get_now_date()))
         model.print_steps_completed(output_to_logging=True)
-        logging.info("MSE:%f, PSNR:%f\n" % (total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+        logging.info("PSNR:%f, SSIM:%f\n" % (total_psnr / len(test_filenames), total_ssim / len(test_filenames)))
 
-        final_mse += total_mse
         final_psnr += total_psnr
+        final_ssim += total_ssim
 
     logging.info("=== summary [%d] %s [%s] ===" % (FLAGS.tests, model.name, util.get_now_date()))
     util.print_num_of_total_parameters(output_to_logging=True)
     n = len(test_filenames) * FLAGS.tests
-    logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (FLAGS.test_dataset, final_mse / n, final_psnr / n))
+    logging.info("\n=== Average [%s] PSNR:%f, SSIM:%f ===" % (FLAGS.test_dataset, final_psnr / n, final_ssim / n))
 
 
 def train(model, flags, trial):
