@@ -39,20 +39,20 @@ def main(not_parsed_args):
     logging.info("Test Data:" + FLAGS.test_dataset + " Training Data:" + FLAGS.dataset)
     util.print_num_of_total_parameters(output_to_logging=True)
 
-    total_psnr = total_mse = 0
+    total_psnr = total_ssim = 0
 
     for i in range(FLAGS.tests):
-        mse, psnr = train(model, FLAGS, i)
-        total_mse += mse
+        psnr, ssim = train(model, FLAGS, i)
         total_psnr += psnr
+        total_ssim += ssim
 
         logging.info("\nTrial(%d) %s" % (i, util.get_now_date()))
         model.print_steps_completed(output_to_logging=True)
-        logging.info("MSE:%f, PSNR:%f\n" % (mse, psnr))
+        logging.info("PSNR:%f, SSIM:%f\n" % (psnr, ssim))
 
     if FLAGS.tests > 1:
-        logging.info("\n=== Final Average [%s] MSE:%f, PSNR:%f ===" % (
-            FLAGS.test_dataset, total_mse / FLAGS.tests, total_psnr / FLAGS.tests))
+        logging.info("\n=== Final Average [%s] PSNR:%f, SSIM:%f ===" % (
+            FLAGS.test_dataset, total_psnr / FLAGS.tests, total_ssim / FLAGS.tests))
 
     model.copy_log_to_archive("archive")
 
@@ -70,10 +70,9 @@ def train(model, flags, trial):
     model.init_train_step()
     model.init_epoch_index()
     model_updated = True
-    min_mse = None
 
-    mse, psnr = model.evaluate(test_filenames)
-    model.print_status(mse, psnr, log=True)
+    psnr, ssim = model.evaluate(test_filenames)
+    model.print_status(psnr, ssim, log=True)
     model.log_to_tensorboard(test_filenames[0], psnr, save_meta_data=True)
 
     while model.lr > flags.end_lr:
@@ -85,14 +84,10 @@ def train(model, flags, trial):
 
             # one training epoch finished
             model.epochs_completed += 1
-            mse, psnr = model.evaluate(test_filenames)
-            model.print_status(mse, psnr, log=model_updated)
+            psnr, ssim = model.evaluate(test_filenames)
+            model.print_status(psnr, ssim, log=model_updated)
             model.log_to_tensorboard(test_filenames[0], psnr, save_meta_data=model_updated)
-
-            # save if performance gets better
-            if min_mse is None or min_mse > mse:
-                min_mse = mse
-                model.save_model(trial=trial, output_log=False)
+            model.save_model(trial=trial, output_log=False)
 
             model_updated = model.update_epoch_and_lr()
             model.init_epoch_index()
@@ -103,27 +98,27 @@ def train(model, flags, trial):
     model.save_model(trial=trial, output_log=True)
 
     # outputs result
-    test(model, flags.test_dataset)
+    evaluate_model(model, flags.test_dataset)
 
     if FLAGS.do_benchmark:
         for test_data in ['set5', 'set14', 'bsd100']:
             if test_data != flags.test_dataset:
-                test(model, test_data)
+                evaluate_model(model, test_data)
 
-    return mse, psnr
+    return psnr, ssim
 
 
-def test(model, test_data):
+def evaluate_model(model, test_data):
     test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
-    total_psnr = total_mse = 0
+    total_psnr = total_ssim = 0
 
     for filename in test_filenames:
-        mse = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=False)
-        total_mse += mse
-        total_psnr += util.get_psnr(mse)
+        psnr, ssim = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=False)
+        total_psnr += psnr
+        total_ssim += ssim
 
-    logging.info("\n=== [%s] MSE:%f, PSNR:%f ===" % (
-        test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+    logging.info("Model Average [%s] PSNR:%f, SSIM:%f" % (
+        test_data, total_psnr / len(test_filenames), total_ssim / len(test_filenames)))
 
 
 if __name__ == '__main__':

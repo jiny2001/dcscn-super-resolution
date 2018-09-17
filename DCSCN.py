@@ -443,19 +443,19 @@ class SuperResolution(tf_graph.TensorflowGraph):
         else:
             return False
 
-    def print_status(self, mse, psnr, log=False):
+    def print_status(self, psnr, ssim, log=False):
 
         if self.step == 0:
-            logging.info("Initial MSE:%f PSNR:%f" % (mse, psnr))
+            logging.info("Initial PSNR:%f SSIM:%f" % (psnr, ssim))
         else:
             processing_time = (time.time() - self.start_time) / self.step
             if self.use_l1_loss:
-                line_a = "%s Step:%s MSE:%f PSNR:%f (Training Loss:%0.3f)" % (
-                    util.get_now_date(), "{:,}".format(self.step), mse, psnr,
+                line_a = "%s Step:%s PSNR:%f SSIM:%f (Training Loss:%0.3f)" % (
+                    util.get_now_date(), "{:,}".format(self.step), psnr, ssim,
                     self.training_loss_sum / self.training_step)
             else:
-                line_a = "%s Step:%s MSE:%f PSNR:%f (Training PSNR:%0.3f)" % (
-                    util.get_now_date(), "{:,}".format(self.step), mse, psnr,
+                line_a = "%s Step:%s PSNR:%f SSIM:%f (Training PSNR:%0.3f)" % (
+                    util.get_now_date(), "{:,}".format(self.step), psnr, ssim,
                     self.training_psnr_sum / self.training_step)
             estimated = processing_time * (self.total_epochs - self.epochs_completed) * (
                 self.training_images // self.batch_num)
@@ -482,16 +482,16 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
     def evaluate(self, test_filenames):
 
-        total_mse = total_psnr = 0
+        total_psnr = total_ssim = 0
         if len(test_filenames) == 0:
             return 0, 0
 
         for filename in test_filenames:
-            mse = self.do_for_evaluate(filename, print_console=False)
-            total_mse += mse
-            total_psnr += util.get_psnr(mse)
+            psnr, ssim = self.do_for_evaluate(filename, print_console=False)
+            total_psnr += psnr
+            total_ssim += ssim
 
-        return total_mse / len(test_filenames), total_psnr / len(test_filenames)
+        return total_psnr / len(test_filenames), total_ssim / len(test_filenames)
 
     def do(self, input_image, bicubic_input_image=None):
 
