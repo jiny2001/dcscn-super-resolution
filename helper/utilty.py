@@ -10,13 +10,14 @@ import math
 import os
 import time
 from os import listdir
-from os.path import isfile, join
 
 import numpy as np
 import tensorflow as tf
 from PIL import Image
+from os.path import isfile, join
 from scipy import misc
 from skimage.measure import compare_psnr, compare_ssim
+
 
 class Timer:
     def __init__(self, timer_count=100):
@@ -451,6 +452,7 @@ def compute_mse(image1, image2, border_size=0):
 
     return mse / ((image1.shape[0] - 2 * border_size) * (image1.shape[1] - 2 * border_size) * image1.shape[2])
 
+
 def compute_psnr_and_ssim(image1, image2, border_size=0):
     if len(image1.shape) == 2:
         image1 = image1.reshape(image1.shape[0], image1.shape[1], 1)
@@ -460,12 +462,7 @@ def compute_psnr_and_ssim(image1, image2, border_size=0):
     if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
         return None
 
-    if image1.dtype != np.uint8:
-        image1 = image1.astype(np.int)
     image1 = image1.astype(np.double)
-
-    if image2.dtype != np.uint8:
-        image2 = image2.astype(np.int)
     image2 = image2.astype(np.double)
 
     if border_size > 0:
