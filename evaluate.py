@@ -48,15 +48,15 @@ def main(not_parsed_args):
 
 def test(model, test_data):
     test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
-    total_psnr = total_mse = 0
+    total_psnr = total_ssim = 0
 
     for filename in test_filenames:
-        mse = model.do_for_evaluate(filename, output_directory=FLAGS.output_dir, output=FLAGS.save_results)
-        total_mse += mse
-        total_psnr += util.get_psnr(mse, max_value=FLAGS.max_value)
+        psnr, ssim = model.do_for_evaluate(filename, output_directory=FLAGS.output_dir, output=FLAGS.save_results)
+        total_psnr += psnr
+        total_ssim += ssim
 
-    logging.info("\n=== Average [%s] MSE:%f, PSNR:%f ===" % (
-        test_data, total_mse / len(test_filenames), total_psnr / len(test_filenames)))
+    logging.info("\n=== Average [%s] PSNR:%f, SSIM:%f ===" % (
+        test_data, total_psnr / len(test_filenames), total_ssim / len(test_filenames)))
 
 
 if __name__ == '__main__':

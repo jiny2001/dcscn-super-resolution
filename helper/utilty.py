@@ -16,7 +16,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 from scipy import misc
-
+from skimage.measure import compare_psnr, compare_ssim
 
 class Timer:
     def __init__(self, timer_count=100):
@@ -450,6 +450,32 @@ def compute_mse(image1, image2, border_size=0):
                 mse += error * error
 
     return mse / ((image1.shape[0] - 2 * border_size) * (image1.shape[1] - 2 * border_size) * image1.shape[2])
+
+def compute_psnr_and_ssim(image1, image2, border_size=0):
+    if len(image1.shape) == 2:
+        image1 = image1.reshape(image1.shape[0], image1.shape[1], 1)
+    if len(image2.shape) == 2:
+        image2 = image2.reshape(image2.shape[0], image2.shape[1], 1)
+
+    if image1.shape[0] != image2.shape[0] or image1.shape[1] != image2.shape[1] or image1.shape[2] != image2.shape[2]:
+        return None
+
+    if image1.dtype != np.uint8:
+        image1 = image1.astype(np.int)
+    image1 = image1.astype(np.double)
+
+    if image2.dtype != np.uint8:
+        image2 = image2.astype(np.int)
+    image2 = image2.astype(np.double)
+
+    if border_size > 0:
+        image1 = image1[border_size:-border_size, border_size:-border_size, :]
+        image2 = image2[border_size:-border_size, border_size:-border_size, :]
+
+    psnr = compare_psnr(image1, image2, data_range=255)
+    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+                        sigma=1.5, data_range=255)
+    return psnr, ssim
 
 
 def print_filter_weights(tensor):

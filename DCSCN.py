@@ -632,7 +632,7 @@ class SuperResolution:
                 true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image, jpeg_mode=self.jpeg_mode)
 
                 output_y_image = self.do(input_y_image, input_bicubic_y_image)
-                mse = util.compute_mse(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=self.scale)
+                psnr, ssim = util.compute_psnr_and_ssim(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=self.scale)
                 loss_image = util.get_loss_image(true_ycbcr_image[:, :, 0:1], output_y_image, border_size=self.scale)
 
                 output_color_image = util.convert_y_and_cbcr_to_rgb(output_y_image, true_ycbcr_image[:, :, 1:3],
@@ -648,7 +648,7 @@ class SuperResolution:
             else:
                 true_y_image = util.convert_rgb_to_y(true_image, jpeg_mode=self.jpeg_mode)
                 output_y_image = self.do(input_y_image)
-                mse = util.compute_mse(true_y_image, output_y_image, border_size=self.scale)
+                psnr, ssim = util.compute_psnr_and_ssim(true_y_image, output_y_image, border_size=self.scale)
 
         elif true_image.shape[2] == 1 and self.channels == 1:
 
@@ -656,14 +656,16 @@ class SuperResolution:
             input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
                                                    alignment=self.scale)
             output_image = self.do(input_image)
-            mse = util.compute_mse(true_image, output_image, border_size=self.scale)
+            psnr, ssim = util.compute_psnr_and_ssim(true_image, output_image, border_size=self.scale)
             if output:
                 util.save_image(output_directory + file_path, true_image)
                 util.save_image(output_directory + filename + "_result" + extension, output_image)
+        else:
+            psnr = ssim = None
 
         if print_console:
-            print("MSE:%f PSNR:%f" % (mse, util.get_psnr(mse)))
-        return mse
+            print("PSNR:%f SSIM:%f" % (psnr, ssim))
+        return psnr, ssim
 
     def init_train_step(self):
         self.lr = self.initial_lr
