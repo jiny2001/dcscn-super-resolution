@@ -33,7 +33,7 @@ tensorflow > 1.0, scipy, numpy and pillow
 The sample result of default parameter is here. You can have even better PSNR than below with using larger filters or deeper layers with our model.
 
 | DataSet | Bicubic | SRCN | SelfEx | DRCN | VDSR | DCSCN (compact) | DCSCN (normal) | DCSCN (large) |
-|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|
+|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |Set5 x2|33.66|36.66|36.49|37.63|37.53|37.06|37.54|37.72|
 |Set14 x2|30.24|32.42|32.22|33.04|33.03|32.69|33.02|33.15|
 |BSD100 x2|29.56|31.36|31.18|31.85|31.90|31.57|31.88|32.03|
@@ -41,7 +41,7 @@ The sample result of default parameter is here. You can have even better PSNR th
 ## Result of SSIM
 
 | DataSet | Bicubic | SRCN | SelfEx | DRCN | VDSR | DCSCN (compact) | DCSCN (normal) | DCSCN (large) |
-|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|
+|:-------:|:-------:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |Set5 x2|0.9299|0.9542||0.9588|0.9587 |0.9559|0.9580|0.9589|
 |Set14 x2|0.8688|0.9063||0.9118|0.9124|0.9082|0.9118|0.9133|
 |BSD100 x2|0.8431|0.8879||0.8942|0.8960|0.8896|0.8946|0.8966|
