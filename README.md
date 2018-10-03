@@ -1,3 +1,8 @@
+# Fork details
+
+I forked this repo so that I can explore the code base for this project, and also explore the feasibility of converting and optimizing it 
+to tensorflow-lite so that it will be more computationally efficient on embedded ARM devices such as the Odroid XU4.
+
 
 # Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network
 
