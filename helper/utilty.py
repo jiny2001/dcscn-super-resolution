@@ -514,10 +514,19 @@ def compute_psnr_and_ssim(image1, image2, border_size=0):
     if border_size > 0:
         image1 = image1[border_size:-border_size, border_size:-border_size, :]
         image2 = image2[border_size:-border_size, border_size:-border_size, :]
+    
 
-    psnr = compare_psnr(image1, image2, data_range=255)
-    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
-                        sigma=1.5, data_range=255)
+    try:
+        psnr = compare_psnr(image1, image2, data_range=255)
+        ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+                            sigma=1.5, data_range=255)
+    except ValueError:
+        # Force them to be float64 so that their PSNR can be compared
+        image1 = image1.astype('float64')
+        image2 = image2.astype('float64')
+        psnr = compare_psnr(image1, image2, data_range=255)
+        ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+                            sigma=1.5, data_range=255)
     return psnr, ssim
 
 
