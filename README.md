@@ -104,6 +104,8 @@ python sr.py --file=your_file.png --layers=8 --filters=96
 You can train with any datasets. Put your image files as a training dataset into the directory under **data** directory, then specify with --dataset arg. Since There are some important hyper paramters to train, please check [args.py](https://github.com/jiny2001/dcscn-super-resolution/blob/master/helper/args.py) to use other training parameters.
 
 Once training parameters has been given, **"model name"** will be defined by the parameters. For ex, when you use default parameters, **"model name"** would be like **"dcscn_L12_F196to48_NIN_A64_PS_R1F32"** and this name represents model structure.
+In this case, **"dcscn_L12_F196to48_NIN_A64_PS_R1F32"** means that the model has 12 layers, 196 filters maximum and 48 filters minimum,
+ 64 NIN filters, self_ensemble = 1 and pixel_shuffler_filters = 1. Batch_image_size = 32.
 
 ```
 # training for x2 with bsd200 dataset
