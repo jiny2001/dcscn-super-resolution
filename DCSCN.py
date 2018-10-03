@@ -567,6 +567,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
 
+        start = time.time()
         if true_image.shape[2] == 3 and self.channels == 1:
 
             # for color images
@@ -606,16 +607,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
             util.save_image(output_directory + filename + "_result" + extension, output_image)
         else:
             return None, None
-
+        end = time.time()
         if print_console:
             print("[%s] PSNR:%f, SSIM:%f" % (filename, psnr, ssim))
-
-        return psnr, ssim
+        elapsed_time = end - start
+        return psnr, ssim, elapsed_time
 
     def do_for_evaluate(self, file_path, print_console=False):
 
         true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
 
+        start = time.time()
         if true_image.shape[2] == 3 and self.channels == 1:
 
             # for color images
@@ -639,11 +641,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
             psnr, ssim = util.compute_psnr_and_ssim(true_image, output_image, border_size=self.psnr_calc_border_size)
         else:
             return None, None
-
+        end = time.time()
         if print_console:
             print("[%s] PSNR:%f, SSIM:%f" % (file_path, psnr, ssim))
 
-        return psnr, ssim
+        elapsed_time = end - start
+        return psnr, ssim, elapsed_time
 
     def evaluate_bicubic(self, file_path, print_console=False):
 

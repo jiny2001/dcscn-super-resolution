@@ -80,19 +80,20 @@ def evaluate_bicubic(model, test_data):
 
 def evaluate_model(model, test_data):
     test_filenames = util.get_files_in_directory(FLAGS.data_dir + "/" + test_data)
-    total_psnr = total_ssim = 0
+    total_psnr = total_ssim = total_time = 0
 
     for filename in test_filenames:
         if FLAGS.save_results:
-            psnr, ssim = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir,
+            psnr, ssim, elapsed_time = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir,
                                                            print_console=False)
         else:
-            psnr, ssim = model.do_for_evaluate(filename, print_console=False)
+            psnr, ssim, elapsed_time = model.do_for_evaluate(filename, print_console=False)
         total_psnr += psnr
         total_ssim += ssim
+        total_time += elapsed_time
 
-    logging.info("Model Average [%s] PSNR:%f, SSIM:%f" % (
-        test_data, total_psnr / len(test_filenames), total_ssim / len(test_filenames)))
+    logging.info("Model Average [%s] PSNR:%f, SSIM:%f, Elapsed Time:%f" % (
+        test_data, total_psnr / len(test_filenames), total_ssim / len(test_filenames), total_time / len(test_filenames)))
 
 
 if __name__ == '__main__':
