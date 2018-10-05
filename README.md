@@ -105,7 +105,7 @@ You can train with any datasets. Put your image files as a training dataset into
 
 Once training parameters has been given, **"model name"** will be defined by the parameters. For ex, when you use default parameters, **"model name"** would be like **"dcscn_L12_F196to48_NIN_A64_PS_R1F32"** and this name represents model structure.
 In this case, **"dcscn_L12_F196to48_NIN_A64_PS_R1F32"** means that the model has 12 layers, 196 filters maximum and 48 filters minimum,
- 64 NIN filters, self_ensemble = 1 and pixel_shuffler_filters = 1. Batch_image_size = 32.
+ 64 NIN filters, self_ensemble = 1 and pixel_shuffler_filters = 1. Batch_image_size = 32. It does not contain the Sc parameter, so it is using the default scale, which is x2. If it is retrained to x5, then the name will have "_Sc5_" in it.
 
 ```
 # training for x2 with bsd200 dataset
