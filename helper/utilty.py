@@ -492,7 +492,10 @@ def get_loss_image(image1, image2, scale=1.0, border_size=0):
 
 def trim_image_as_file(image):
     image = np.rint(image)
-    return np.clip(image, 0, 255)
+    image = np.clip(image, 0, 255)
+    if image.dtype != np.float32:
+        image = image.astype(np.float32)
+    return image
 
 
 def compute_psnr_and_ssim(image1, image2, border_size=0):

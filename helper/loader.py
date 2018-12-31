@@ -54,15 +54,15 @@ def build_input_image(image, width=0, height=0, channels=1, scale=1, alignment=0
     if alignment > 1:
         image = util.set_image_alignment(image, alignment)
 
-    if scale != 1:
-        image = util.resize_image_by_pil(image, 1.0 / scale)
-
     if channels == 1 and image.shape[2] == 3:
         if convert_ycbcr:
             image = util.convert_rgb_to_y(image)
     else:
         if convert_ycbcr:
             image = util.convert_rgb_to_ycbcr(image)
+
+    if scale != 1:
+        image = util.resize_image_by_pil(image, 1.0 / scale)
 
     return image
 
