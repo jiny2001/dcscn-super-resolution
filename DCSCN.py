@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from helper import loader, tf_graph, utilty as util
 
-BICUBIC_METHOD_STRING = "bicubic"
+# BICUBIC_METHOD_STRING = "bicubic"
 
 
 class SuperResolution(tf_graph.TensorflowGraph):
@@ -38,7 +38,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.nin_filters2 = flags.nin_filters2
         self.reconstruct_layers = max(flags.reconstruct_layers, 1)
         self.reconstruct_filters = flags.reconstruct_filters
-        self.resampling_method = BICUBIC_METHOD_STRING
+        self.resampling_method = flags.resampling_method
         self.pixel_shuffler = flags.pixel_shuffler
         self.pixel_shuffler_filters = flags.pixel_shuffler_filters
         self.self_ensemble = flags.self_ensemble
@@ -184,7 +184,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 self.max_value)
 
     def build_graph(self):
+        # generates the graph using low-level tensorflow tensors and operations.
 
+        # input tensors. X is used to pass the input image. Y is used to pass the base image. X2 is used to
+        # pass the image that was upsampled using bicubic interpolation.
+
+        # dropout is used to introduce non-linearity and idk what is_training is for.
         self.x = tf.placeholder(tf.float32, shape=[None, None, None, self.channels], name="x")
         self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="y")
         self.x2 = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="x2")
@@ -192,32 +197,45 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         # building feature extraction layers
-
-        output_feature_num = self.filters
+        output_feature_num = self.filters #filters refer to the number of filters of the first feature CNNs
         total_output_feature_num = 0
-        input_feature_num = self.channels
-        input_tensor = self.x
+        #channels refer to the number of channels used in YCbCr space. 
+        #By default (based on args.py), only Y is used, i.e. self.channels = 1.  
+        input_feature_num = self.channels 
+        input_tensor = self.x #initialize input tensor as the input image
 
         if self.save_weights:
             with tf.name_scope("X"):
+                # by default, save_max and save_min is false so you won't see them in tensorboard.
+                # this saves the mean and stddev for the input picture (idk for what)
                 util.add_summaries("output", self.name, self.x, save_stddev=True, save_mean=True)
 
+        # self.layers is the number of layers of feature extraction CNNs
+        # this loop basically dictates the number of filters to be found in the current layer
         for i in range(self.layers):
+            # if the number of filters in the last layer is greater than 0 and loop is not at first layer.
             if self.min_filters != 0 and i > 0:
+                # what is x1?
                 x1 = i / float(self.layers - 1)
-                y1 = pow(x1, 1.0 / self.filters_decay_gamma)
+                # what is y1?
+                # filters_decay_gamma refers to "Number of CNN filters are decayed from [filters] to [min_filters] by this gamma"
+                y1 = pow(x1, 1.0 / self.filters_decay_gamma) 
+                # i dun understand this also
                 output_feature_num = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
 
+            # create the CNN for that layer using the parameters computed above
+            # based on generate_nn_ops.py, the input tensor is 4D because it represents [batch, in_height, in_width, in_channels]
+            # the filter tensor is also 4D because [filter_height, filter_width, in_channels, out_channels]
             self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
                             output_feature_num, use_bias=True, activator=self.activator,
                             use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
-            input_feature_num = output_feature_num
-            input_tensor = self.H[-1]
-            total_output_feature_num += output_feature_num
+            input_feature_num = output_feature_num # updates the number of input features to be used for the next layer.
+            input_tensor = self.H[-1] # wtf is H? I think it is the list of shapes for each layer 
+            total_output_feature_num += output_feature_num # not too sure what is this for yet.
 
         with tf.variable_scope("Concat"):
-            self.H_concat = tf.concat(self.H, 3, name="H_concat")
-        self.features += " Total: (%d)" % total_output_feature_num
+            self.H_concat = tf.concat(self.H, 3, name="H_concat") # concatenates H along the third axis (whatever is h)
+        self.features += " Total: (%d)" % total_output_feature_num # used to output the number of features gathered by the model during logging
 
         # building reconstruction layers ---
 
@@ -239,6 +257,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             input_channels = total_output_feature_num
 
         # building upsampling layer
+        # TODO: Find out how does the pixel shuffler works
         if self.pixel_shuffler:
             if self.pixel_shuffler_filters != 0:
                 output_channels = self.pixel_shuffler_filters

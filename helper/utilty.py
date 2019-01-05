@@ -350,9 +350,19 @@ def xavier_cnn_initializer(shape, uniform=True):
 
 
 def he_initializer(shape):
+    # https://towardsdatascience.com/random-initialization-for-neural-networks-a-thing-of-the-past-bfcdd806bf9e
+    """
+    He-et-al Initialization
+    This method of initializing became famous through a paper submitted in 2015 by He et al, and is similar 
+    to Xavier initialization, with the factor multiplied by two. In this method, the weights are initialized
+    keeping in mind the size of the previous layer which helps in attaining a global minimum of the cost function 
+    faster and more efficiently.The weights are still random but differ in range depending on the size of the
+    previous layer of neurons. This provides a controlled initialisation hence the faster and more efficient 
+    gradient descent.
+    """
     n = shape[0] * shape[1] * shape[2]
-    stddev = math.sqrt(2.0 / n)
-    return tf.truncated_normal(shape=shape, stddev=stddev)
+    stddev = math.sqrt(2.0 / n) # standard deviation decreases as shape increases
+    return tf.truncated_normal(shape=shape, stddev=stddev) # returns random values from a truncated normal distribution
 
 
 def upsample_filter(size):
@@ -383,9 +393,10 @@ def upscale_weight(scale, channels, name="weight"):
 
 
 def weight(shape, stddev=0.01, name="weight", uniform=False, initializer="stddev"):
+    # initialize the weights of the graph as a tf variable ( to ensure non-symmetry )
     if initializer == "xavier":
         initial = xavier_cnn_initializer(shape, uniform=uniform)
-    elif initializer == "he":
+    elif initializer == "he": #this is actually the default one because args.py default argument for initializer is "he".
         initial = he_initializer(shape)
     elif initializer == "uniform":
         initial = tf.random_uniform(shape, minval=-2.0 * stddev, maxval=2.0 * stddev)

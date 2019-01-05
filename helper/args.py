@@ -31,6 +31,7 @@ flags.DEFINE_string("activator", "prelu", "Activator can be [relu, leaky_relu, p
 flags.DEFINE_boolean("pixel_shuffler", True, "Use Pixel Shuffler instead of transposed CNN")
 flags.DEFINE_integer("pixel_shuffler_filters", 0,
                      "Num of Pixel Shuffler output channels. 0 means use same channels as input.")
+# self_ensemble explanation: https://arxiv.org/abs/1712.00673
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
 flags.DEFINE_boolean("batch_norm", False, "use batch normalization after each CNNs")
 
@@ -71,6 +72,8 @@ flags.DEFINE_integer("psnr_calc_border_size", -1,
                      "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
 flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Makes training significantly faster but "
                                            "the patches are limited to be on the grid.")
+flags.DEFINE_string("resampling_method", "bicubic", "For choosing the type of resampling method to be used for x2.\
+                     Allowed types are 'bicubic', 'bilinear', 'nearest', 'lanczos'")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")

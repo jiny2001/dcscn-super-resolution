@@ -54,6 +54,7 @@ def main(not_parsed_args):
     else:
         test_list = [FLAGS.test_dataset]
 
+    # FLAGS.tests refer to the number of training sets to be used
     for i in range(FLAGS.tests):
         model.load_model(FLAGS.load_model_name, trial=i, output_log=True if FLAGS.tests > 1 else False)
 

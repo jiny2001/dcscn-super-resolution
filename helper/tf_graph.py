@@ -99,6 +99,7 @@ class TensorflowGraph:
         return output
 
     def conv2d(self, input_tensor, w, stride, bias=None, use_batch_norm=False, name=""):
+        # note: your input tensor has to have float data type
         output = tf.nn.conv2d(input_tensor, w, strides=[1, stride, stride, 1], padding="SAME", name=name + "_conv")
         self.complexity += self.pix_per_input * int(w.shape[0] * w.shape[1] * w.shape[2] * w.shape[3])
 
@@ -114,16 +115,21 @@ class TensorflowGraph:
     def build_conv(self, name, input_tensor, cnn_size, input_feature_num, output_feature_num, use_bias=False,
                    activator=None, use_batch_norm=False, dropout_rate=1.0):
         with tf.variable_scope(name):
+            # creates conv_W as a tf variable
             w = util.weight([cnn_size, cnn_size, input_feature_num, output_feature_num],
                             stddev=self.weight_dev, name="conv_W", initializer=self.initializer)
-
+            # creates bias for all outputs as a tensorflow constant
             b = util.bias([output_feature_num], name="conv_B") if use_bias else None
+            # creates a convolutional network with a stride of 1 and the weights and biases defined earlier. 
+            # Batch normalization is false by default.
             h = self.conv2d(input_tensor, w, self.cnn_stride, bias=b, use_batch_norm=use_batch_norm, name=name)
 
             if activator is not None:
+                # set the activation function to be used at each neuron. By default for the program, the activator used is prelu.
                 h = self.build_activator(h, output_feature_num, activator, base_name=name)
 
             if dropout_rate < 1.0:
+                # set dropout rate for the network
                 h = tf.nn.dropout(h, self.dropout, name="dropout")
 
             self.H.append(h)
@@ -135,7 +141,7 @@ class TensorflowGraph:
                     util.add_summaries("bias", self.name, b, save_stddev=True, save_mean=True)
 
             if self.save_images and cnn_size > 1:
-                util.log_cnn_weights_as_images(self.name, w, max_outputs=self.save_images_num)
+                util.log_cnn_weights_as_images(self.name, w, max_outputs=self.save_images_num) #by default false for the program
 
         if self.receptive_fields == 0:
             self.receptive_fields = cnn_size
