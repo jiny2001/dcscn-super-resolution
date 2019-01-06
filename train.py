@@ -26,6 +26,7 @@ def main(not_parsed_args):
 
     model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 
+    # script allows you to split training images into batches in advance.
     if FLAGS.build_batch:
         model.load_datasets(FLAGS.data_dir + "/" + FLAGS.dataset, FLAGS.batch_dir + "/" + FLAGS.dataset,
                             FLAGS.batch_image_size, FLAGS.stride_size)

@@ -46,8 +46,8 @@ flags.DEFINE_float("beta1", 0.9, "Beta1 for adam optimizer")
 flags.DEFINE_float("beta2", 0.999, "Beta2 for adam optimizer")
 flags.DEFINE_float("epsilon", 1e-8, "epsilon for adam optimizer")
 flags.DEFINE_float("momentum", 0.9, "Momentum for momentum optimizer and rmsprop optimizer")
-flags.DEFINE_integer("batch_num", 20, "Number of mini-batch images for training")
-flags.DEFINE_integer("batch_image_size", 48, "Image size for mini-batch")
+flags.DEFINE_integer("batch_num", 20, "Number of batch images for one training step.")
+flags.DEFINE_integer("batch_image_size", 48, "Each training image will be splitted this size.")
 flags.DEFINE_integer("stride_size", 0, "Stride size for mini-batch. If it is 0, use half of batch_image_size")
 flags.DEFINE_integer("training_images", 24000, "Number of training on each epoch")
 flags.DEFINE_boolean("use_l1_loss", False, "Use L1 Error as loss function instead of MSE Error.")
@@ -74,6 +74,8 @@ flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Mak
                                            "the patches are limited to be on the grid.")
 flags.DEFINE_string("resampling_method", "bicubic", "For choosing the type of resampling method to be used for x2.\
                      Allowed types are 'bicubic', 'bilinear', 'nearest', 'lanczos'")
+flags.DEFINE_integer("input_image_width", 50, "The width of the input image")
+flags.DEFINE_integer("input_image_height", 75, "The height of the input image")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")
@@ -94,7 +96,7 @@ flags.DEFINE_boolean("save_images", False, "Save CNN weights as images")
 flags.DEFINE_integer("save_images_num", 20, "Number of CNN images saved")
 flags.DEFINE_boolean("save_meta_data", False, "")
 flags.DEFINE_integer("gpu_device_id", 0, "Device ID of GPUs which will be used to compute.")
-
+flags.DEFINE_string("name_postfix", "", "Any particular postfix you want to place on your model")
 
 def get():
     print("Python Interpreter version:%s" % sys.version[:3])

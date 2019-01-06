@@ -38,7 +38,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.nin_filters2 = flags.nin_filters2
         self.reconstruct_layers = max(flags.reconstruct_layers, 1)
         self.reconstruct_filters = flags.reconstruct_filters
-        self.resampling_method = flags.resampling_method
         self.pixel_shuffler = flags.pixel_shuffler
         self.pixel_shuffler_filters = flags.pixel_shuffler_filters
         self.self_ensemble = flags.self_ensemble
@@ -76,12 +75,15 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.psnr_calc_border_size = flags.psnr_calc_border_size
         if self.psnr_calc_border_size < 0:
             self.psnr_calc_border_size = self.scale
+        self.resampling_method = flags.resampling_method
+        self.input_image_width = flags.input_image_width
+        self.input_image_height = flags.input_image_height
 
         # Environment (all directory name should not contain tailing '/'  )
         self.batch_dir = flags.batch_dir
 
         # initialize variables
-        self.name = self.get_model_name(model_name)
+        self.name = self.get_model_name(model_name, name_postfix = flags.name_postfix)
         self.total_epochs = 0
         lr = self.initial_lr
         while lr > flags.end_lr:
@@ -190,9 +192,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
         # pass the image that was upsampled using bicubic interpolation.
 
         # dropout is used to introduce non-linearity and idk what is_training is for.
-        self.x = tf.placeholder(tf.float32, shape=[None, None, None, self.channels], name="x")
-        self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="y")
-        self.x2 = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="x2")
+
+        # first dimension is always 1 for some reason. Second dimension is image height. Third dimension is image width. Fourth dimension is the number of color channels.
+        self.x = tf.placeholder(tf.float32, shape=[1, self.input_image_height, self.input_image_width, self.channels], name="x")
+        self.y = tf.placeholder(tf.float32, shape=[1, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="y")
+        self.x2 = tf.placeholder(tf.float32, shape=[1, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="x2")
         self.dropout = tf.placeholder(tf.float32, shape=[], name="dropout_keep_rate")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
@@ -230,7 +234,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
                             output_feature_num, use_bias=True, activator=self.activator,
                             use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
             input_feature_num = output_feature_num # updates the number of input features to be used for the next layer.
-            input_tensor = self.H[-1] # wtf is H? I think it is the list of shapes for each layer 
+            input_tensor = self.H[-1] # H is the list of tensors in the network.
             total_output_feature_num += output_feature_num # not too sure what is this for yet.
 
         with tf.variable_scope("Concat"):
@@ -272,10 +276,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
         else:
             self.build_transposed_conv("Up-TCNN", self.H[-1], self.scale, input_channels)
 
-        for i in range(self.reconstruct_layers - 1):
-            self.build_conv("R-CNN%d" % (i + 1), self.H[-1], self.cnn_size, input_channels, self.reconstruct_filters,
-                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
-            input_channels = self.reconstruct_filters
+        # for i in range(self.reconstruct_layers - 1):
+        #     self.build_conv("R-CNN%d" % (i + 1), self.H[-1], self.cnn_size, input_channels, self.reconstruct_filters,
+        #                     dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+        #     input_channels = self.reconstruct_filters
 
         self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
                         self.output_channels)
@@ -375,7 +379,27 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_bicubic, self.y: self.batch_true,
                      self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
+        
+        # print(np.shape(self.batch_input))
+        # print(np.shape(self.batch_input_bicubic))
+        # print(np.shape(self.batch_true))
 
+        # print(self.batch_input)
+        # print(self.batch_input_bicubic)
+        # print(self.batch_true)
+
+        # print(self.batch_input)
+        # print(self.batch_input_bicubic)
+        # print(self.batch_true)
+        # print(self.lr)
+        # print(self.dropout_rate)
+
+
+        # print(type(self.x))
+        # print(type(self.x2))
+        # print(type(self.y))
+        # print(type(self.lr_input))
+        # print(type(self.dropout))
         _, image_loss, mse = self.sess.run([self.training_optimizer, self.image_loss, self.mse], feed_dict=feed_dict)
         self.training_loss_sum += image_loss
         self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
@@ -404,6 +428,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             bicubic_image = np.multiply(bicubic_image, self.max_value / 255.0)  # type: np.ndarray
             org_image = np.multiply(org_image, self.max_value / 255.0)  # type: np.ndarray
 
+        # input_image.shape[0] is height, input_image.shape[1] is width, input_image.shape[2] is number of channels
         feed_dict = {self.x: input_image.reshape([1, input_image.shape[0], input_image.shape[1], input_image.shape[2]]),
                      self.x2: bicubic_image.reshape(
                          [1, bicubic_image.shape[0], bicubic_image.shape[1], bicubic_image.shape[2]]),
@@ -506,7 +531,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             return 0, 0
 
         for filename in test_filenames:
-            psnr, ssim = self.do_for_evaluate(filename, print_console=False)
+            psnr, ssim, t = self.do_for_evaluate(filename, print_console=False)
             total_psnr += psnr
             total_ssim += ssim
 
@@ -530,6 +555,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
             for i in range(self.self_ensemble):
                 image = util.flip(input_image, i)
                 bicubic_image = util.flip(bicubic_input_image, i)
+                # input_image.shape[0] is height, input_image.shape[1] is width, input_image.shape[2] is number of channels
+                # reshaping in such a manner creates an ugly 4-dimensional array.
                 y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
                                                       self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
                                                                                      self.scale * image.shape[1],

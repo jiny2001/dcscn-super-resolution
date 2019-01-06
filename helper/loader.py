@@ -332,24 +332,24 @@ class DynamicDataSets:
     def load_random_patch(self, filename):
 
         image = util.load_image(filename, print_console=False)
-        height, width = image.shape[0:2]
+        # height, width = image.shape[0:2]
 
-        load_batch_size = self.batch_image_size * self.scale
+        # load_batch_size = self.batch_image_size * self.scale
 
-        if height < load_batch_size or width < load_batch_size:
-            print("Error: %s should have more than %d x %d size." % (filename, load_batch_size, load_batch_size))
-            return None
+        # if height < load_batch_size or width < load_batch_size:
+        #     print("Error: %s should have more than %d x %d size." % (filename, load_batch_size, load_batch_size))
+        #     return None
 
-        if height == load_batch_size:
-            y = 0
-        else:
-            y = random.randrange(height - load_batch_size)
+        # if height == load_batch_size:
+        #     y = 0
+        # else:
+        #     y = random.randrange(height - load_batch_size)
 
-        if width == load_batch_size:
-            x = 0
-        else:
-            x = random.randrange(width - load_batch_size)
-        image = image[y:y + load_batch_size, x:x + load_batch_size, :]
+        # if width == load_batch_size:
+        #     x = 0
+        # else:
+        #     x = random.randrange(width - load_batch_size)
+        # image = image[y:y + load_batch_size, x:x + load_batch_size, :]
         image = build_input_image(image, channels=self.channels, convert_ycbcr=True)
 
         return image
