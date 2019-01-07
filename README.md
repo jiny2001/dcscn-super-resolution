@@ -3,6 +3,50 @@
 I forked this repo so that I can explore the code base for this project, and also explore the feasibility of converting and optimizing it 
 to tensorflow-lite so that it will be more computationally efficient on embedded ARM devices such as the Odroid XU4.
 
+Some useful commands to run on the fork:
+
+(run them with pythonenv activated)
+
+To freeze a checkpoint (move the checkpoint files together with the 'checkpoint' file in the 'models' directory to the 'model_to_freeze' directory):
+```
+python3 custom_freeze_graph.py --model_dir=./model_to_freeze/ --output_node_names=output
+```
+
+To optimize a frozen model for inference:
+```
+python3 ./env/lib/python3.6/site-packages/tensorflow/python/tools/optimize_for_inference.py  --input=./model_to_freeze/frozen_model.pb --output=./model_to_freeze/frozen_model_optimized.pb --input_names=x,x2 --output_names=output
+```
+
+To train a model that can be converted to tflite:
+```
+python train.py --scale=4 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --dataset=resized_4_train --test_dataset=resized_4_test --training_images=4480 --batch_num=1 --batch_image_size=75 --resampling_method=lanczos --input_image_height=75 --input_image_width=50 --pixel_shuffler=False --dropout_rate=1 --activator=leaky_relu
+```
+Rationale behind this whole chain of command line arguments is for ensuring successful conversion of the resultant model into a tflite model. Specifically:
+- pixel_shuffler layers contain the DEPTH_TO_SPACE operation so we'll disable its usage for the upsampling layer
+- PReLU (the default activator) uses the Abs operation so we'll use leaky_relu instead
+- Dropout uses the RandomUniform operation so we'll disable dropout by setting it to 1 (Which may increase performance anyway)
+
+To convert model into its (unquantized) tflite equivalent:
+```
+tflite_convert   --graph_def_file=./model_to_freeze/frozen_model_optimized.pb   --output_file=./model_to_freeze/optimized_graph.lite   --input_format=TENSORFLOW_GRAPHDEF   --output_format=TFLITE   --input_shapes=1,75,50,1:1,300,200,1   --input_arrays=x,x2   --output_array=output   --inference_type=QUANTIZED_UINT8 --mean_values=128,128 --std_dev_values=127,127 --default_ranges_min=0 --default_ranges_max=6
+```
+Having some trouble at this part but I don't know if its even worth it to do this because tflite is giving me poor inference results at this point.
+
+To evaluate a tflite model:
+```
+python tflite_inference.py --test_dataset=resized_4_test --scale=4
+```
+
+To evaluate the frozen model:
+```
+python inference.py --test_dataset=resized_4_test --scale=4 --self_ensemble=2 --dropout_rate=1
+```
+
+To evaluate a checkpoint:
+```
+python evaluate.py --scale=4 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --test_dataset=resized_4_test --compute_bicubic=True --resampling_method=lanczos --input_image_width=50 --input_image_height=75 --dropout_rate=1 --activator=leaky_relu --pixel_shuffler=False
+```
+
 
 # Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network
 
