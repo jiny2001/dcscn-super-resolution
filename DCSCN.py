@@ -24,7 +24,6 @@ from helper import loader, tf_graph, utilty as util
 
 class SuperResolution(tf_graph.TensorflowGraph):
     def __init__(self, flags, model_name=""):
-
         super().__init__(flags)
 
         # Model Parameters
@@ -67,6 +66,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.training_images = int(math.ceil(flags.training_images / flags.batch_num) * flags.batch_num)
         self.train = None
         self.test = None
+        self.gpu_device_id = flags.gpu_device_id
 
         # Image Processing Parameters
         self.max_value = flags.max_value
@@ -184,6 +184,49 @@ class SuperResolution(tf_graph.TensorflowGraph):
         for i in range(self.batch_num):
             self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(
                 self.max_value)
+
+    # tehtea's function
+    def load_graph(self, frozen_graph_filename='./model_to_freeze/frozen_model_optimized.pb'):
+        self.name =  "frozen_model"
+        # We load the protobuf file from the disk and parse it to retrieve the 
+        # unserialized graph_def
+        with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+
+        # with tf.Graph().as_default() as graph:
+        #     print(type(graph))
+        # print(type(self))
+        with self.as_default() as graph:
+            tf.import_graph_def(graph_def, name="prefix")
+        # print(self)
+        # print(tf.get_default_graph())
+        # for op in self.get_operations():
+        #     print(op.name)
+        #     print(op.values())
+        # # Then, we import the graph_def into a new Graph and returns it 
+        # with tf.Graph().as_default() as graph:
+        #     # The name var will prefix every op/nodes in your graph
+        #     # Since we load everything in a new graph, this is not needed
+        #     tf.import_graph_def(graph_def, name="prefix")
+
+        # # input nodes are just placeholders for some reason
+        # self.x = tf.placeholder(tf.float32, shape=[1, self.input_image_height, self.input_image_width, self.channels], name="x")
+        # self.x2 = tf.placeholder(tf.float32, shape=[1, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="x2")
+        # self.dropout = tf.placeholder(tf.float32, shape=[], name="dropout_keep_rate")
+        self.is_training = tf.placeholder(tf.bool, name="is_training")
+        
+        self.x = self.get_tensor_by_name("prefix/x:0")
+        self.x2 = self.get_tensor_by_name("prefix/x2:0")
+        self.dropout = self.get_tensor_by_name("prefix/dropout_keep_rate:0")
+        # self.is_training = self.get_tensor_by_name("prefix/")
+
+        # get output node
+        self.y_ = self.get_tensor_by_name('prefix/output:0')
+
+        # re-initialize the session
+        self.sess.close()
+        super().init_session(self.gpu_device_id)
 
     def build_graph(self):
         # generates the graph using low-level tensorflow tensors and operations.
@@ -557,11 +600,24 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 bicubic_image = util.flip(bicubic_input_image, i)
                 # input_image.shape[0] is height, input_image.shape[1] is width, input_image.shape[2] is number of channels
                 # reshaping in such a manner creates an ugly 4-dimensional array.
+                # print(image.reshape(1, image.shape[0], image.shape[1], ch).shape)
+                # try:
+                #     y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
+                #                                         self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
+                #                                                                         self.scale * image.shape[1],
+                #                                                                         ch),
+                #                                         self.dropout: 1.0, 
+                #                                         self.is_training: 0})
+                # except Exception as e:
+                #     print(e)
+                #     return np.zeros([300, 200])
+                # print(image.reshape(1, image.shape[0], image.shape[1], ch).shape)
                 y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
-                                                      self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
-                                                                                     self.scale * image.shape[1],
-                                                                                     ch),
-                                                      self.dropout: 1.0, self.is_training: 0})
+                                                    self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
+                                                                                    self.scale * image.shape[1],
+                                                                                    ch),
+                                                    self.dropout: 1.0, 
+                                                    self.is_training: 0})
                 restored = util.flip(y[0], i, invert=True)
                 output += restored
 
@@ -624,6 +680,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
             true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image)
 
+            # print(input_y_image.shape)
             output_y_image = self.do(input_y_image, input_bicubic_y_image)
             psnr, ssim = util.compute_psnr_and_ssim(true_ycbcr_image[:, :, 0:1], output_y_image,
                                                     border_size=self.psnr_calc_border_size)
@@ -655,6 +712,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
             return None, None
         end = time.time()
         if print_console:
+            # print(type(self.H))
+            # print(type(self.H[0]))
             print("[%s] PSNR:%f, SSIM:%f" % (filename, psnr, ssim))
         elapsed_time = end - start
         return psnr, ssim, elapsed_time
@@ -690,7 +749,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
         end = time.time()
         if print_console:
             print("[%s] PSNR:%f, SSIM:%f" % (file_path, psnr, ssim))
-
         elapsed_time = end - start
         return psnr, ssim, elapsed_time
 

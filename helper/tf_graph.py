@@ -14,9 +14,12 @@ import tensorflow as tf
 from helper import utilty as util
 
 
-class TensorflowGraph:
+class TensorflowGraph(tf.Graph):
 
     def __init__(self, flags):
+        # inheritance 
+        super().__init__()
+
         self.name = ""
 
         # graph settings
@@ -65,7 +68,8 @@ class TensorflowGraph:
         config.gpu_options.visible_device_list = str(device_id)  ## this values depends of numbers of GPUs
 
         print("Session and graph initialized.")
-        self.sess = tf.InteractiveSession(config=config, graph=tf.Graph())
+        # self.sess = tf.InteractiveSession(config=config, graph=tf.Graph())
+        self.sess = tf.InteractiveSession(config=config, graph=self)
 
     def init_all_variables(self):
         self.sess.run(tf.global_variables_initializer())
@@ -229,10 +233,10 @@ class TensorflowGraph:
         else:
             print("Model saved [%s]." % filename)
 
-    def build_summary_saver(self):
+    def build_summary_saver(self, with_saver=True):
         if self.enable_log:
             self.summary_op = tf.summary.merge_all()
             self.train_writer = tf.summary.FileWriter(self.tf_log_dir + "/train")
             self.test_writer = tf.summary.FileWriter(self.tf_log_dir + "/test", graph=self.sess.graph)
-
-        self.saver = tf.train.Saver(max_to_keep=None)
+        if with_saver:
+            self.saver = tf.train.Saver(max_to_keep=None)
