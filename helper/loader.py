@@ -330,7 +330,9 @@ class DynamicDataSets:
         return input_image, input_bicubic_image, image
 
     def load_random_patch(self, filename):
-
+        """ mangled this function for now because I was having some problems with batch training when the tensor sizes are fixed.
+        By right I think it should be splitting up the image into smaller pieces to train them.
+        """
         image = util.load_image(filename, print_console=False)
         # height, width = image.shape[0:2]
 

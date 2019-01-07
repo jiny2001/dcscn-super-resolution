@@ -86,7 +86,7 @@ class TensorflowGraph(tf.Graph):
         elif activator == "tanh":
             output = tf.nn.tanh(input_tensor, name=base_name + "_tanh")
         elif activator == "leaky_relu":
-            output = tf.maximum(input_tensor, leaky_relu_alpha * input_tensor, name=base_name + "_leaky")
+            output = tf.nn.leaky_relu(input_tensor, leaky_relu_alpha, name=base_name + "_leaky")
         elif activator == "prelu":
             with tf.variable_scope("prelu"):
                 alphas = tf.Variable(tf.constant(0.1, shape=[features]), name=base_name + "_prelu")

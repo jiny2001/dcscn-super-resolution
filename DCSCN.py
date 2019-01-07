@@ -185,46 +185,35 @@ class SuperResolution(tf_graph.TensorflowGraph):
             self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(
                 self.max_value)
 
-    # tehtea's function
     def load_graph(self, frozen_graph_filename='./model_to_freeze/frozen_model_optimized.pb'):
-        self.name =  "frozen_model"
+        """ load an existing frozen graph into the current graph.
+        TODO: allow user to specify the filepath of the frozen path
+        """
+        self.name =  "frozen_model" #TODO: Generalise this line
         # We load the protobuf file from the disk and parse it to retrieve the 
         # unserialized graph_def
         with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
 
-        # with tf.Graph().as_default() as graph:
-        #     print(type(graph))
-        # print(type(self))
+        # load the graph def into the current graph
         with self.as_default() as graph:
             tf.import_graph_def(graph_def, name="prefix")
-        # print(self)
-        # print(tf.get_default_graph())
-        # for op in self.get_operations():
-        #     print(op.name)
-        #     print(op.values())
-        # # Then, we import the graph_def into a new Graph and returns it 
-        # with tf.Graph().as_default() as graph:
-        #     # The name var will prefix every op/nodes in your graph
-        #     # Since we load everything in a new graph, this is not needed
-        #     tf.import_graph_def(graph_def, name="prefix")
 
-        # # input nodes are just placeholders for some reason
-        # self.x = tf.placeholder(tf.float32, shape=[1, self.input_image_height, self.input_image_width, self.channels], name="x")
-        # self.x2 = tf.placeholder(tf.float32, shape=[1, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="x2")
-        # self.dropout = tf.placeholder(tf.float32, shape=[], name="dropout_keep_rate")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
         
+        # get input and output tensors
+
+        # input
         self.x = self.get_tensor_by_name("prefix/x:0")
         self.x2 = self.get_tensor_by_name("prefix/x2:0")
-        self.dropout = self.get_tensor_by_name("prefix/dropout_keep_rate:0")
-        # self.is_training = self.get_tensor_by_name("prefix/")
+        if self.dropout_rate < 1:
+            self.dropout = self.get_tensor_by_name("prefix/dropout_keep_rate:0")
 
-        # get output node
+        # output
         self.y_ = self.get_tensor_by_name('prefix/output:0')
 
-        # re-initialize the session
+        # close existing session and re-initialize it
         self.sess.close()
         super().init_session(self.gpu_device_id)
 
@@ -262,9 +251,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
         for i in range(self.layers):
             # if the number of filters in the last layer is greater than 0 and loop is not at first layer.
             if self.min_filters != 0 and i > 0:
-                # what is x1?
+                # x1 and y1 are just used to compute the size of each layers
                 x1 = i / float(self.layers - 1)
-                # what is y1?
                 # filters_decay_gamma refers to "Number of CNN filters are decayed from [filters] to [min_filters] by this gamma"
                 y1 = pow(x1, 1.0 / self.filters_decay_gamma) 
                 # i dun understand this also
@@ -422,27 +410,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_bicubic, self.y: self.batch_true,
                      self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
-        
-        # print(np.shape(self.batch_input))
-        # print(np.shape(self.batch_input_bicubic))
-        # print(np.shape(self.batch_true))
 
-        # print(self.batch_input)
-        # print(self.batch_input_bicubic)
-        # print(self.batch_true)
-
-        # print(self.batch_input)
-        # print(self.batch_input_bicubic)
-        # print(self.batch_true)
-        # print(self.lr)
-        # print(self.dropout_rate)
-
-
-        # print(type(self.x))
-        # print(type(self.x2))
-        # print(type(self.y))
-        # print(type(self.lr_input))
-        # print(type(self.dropout))
         _, image_loss, mse = self.sess.run([self.training_optimizer, self.image_loss, self.mse], feed_dict=feed_dict)
         self.training_loss_sum += image_loss
         self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
@@ -600,24 +568,20 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 bicubic_image = util.flip(bicubic_input_image, i)
                 # input_image.shape[0] is height, input_image.shape[1] is width, input_image.shape[2] is number of channels
                 # reshaping in such a manner creates an ugly 4-dimensional array.
-                # print(image.reshape(1, image.shape[0], image.shape[1], ch).shape)
-                # try:
-                #     y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
-                #                                         self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
-                #                                                                         self.scale * image.shape[1],
-                #                                                                         ch),
-                #                                         self.dropout: 1.0, 
-                #                                         self.is_training: 0})
-                # except Exception as e:
-                #     print(e)
-                #     return np.zeros([300, 200])
-                # print(image.reshape(1, image.shape[0], image.shape[1], ch).shape)
-                y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
-                                                    self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
-                                                                                    self.scale * image.shape[1],
-                                                                                    ch),
-                                                    self.dropout: 1.0, 
-                                                    self.is_training: 0})
+
+                if (self.dropout_rate < 1):
+                    y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
+                                                        self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
+                                                                                        self.scale * image.shape[1],
+                                                                                        ch),
+                                                        self.dropout: 1.0, 
+                                                        self.is_training: 0})
+                else:
+                    y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
+                                                        self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
+                                                                                        self.scale * image.shape[1],
+                                                                                        ch),
+                                                        self.is_training: 0})
                 restored = util.flip(y[0], i, invert=True)
                 output += restored
 
