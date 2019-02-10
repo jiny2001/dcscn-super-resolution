@@ -235,8 +235,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
             self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="Concat2"))
             input_channels = self.nin_filters + self.nin_filters2
         else:
-            self.H.append(self.H_concat)
-            input_channels = total_output_feature_num
+            self.build_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
+                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+            input_channels = self.filters
 
         # building upsampling layer
         if self.pixel_shuffler:
