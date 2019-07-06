@@ -1,2 +1,2 @@
-model_checkpoint_path: "dcscn_L2_F4to4_PS_R1F4.ckpt"
-all_model_checkpoint_paths: "dcscn_L2_F4to4_PS_R1F4.ckpt"
+model_checkpoint_path: "inference_model.ckpt"
+all_model_checkpoint_paths: "inference_model.ckpt"

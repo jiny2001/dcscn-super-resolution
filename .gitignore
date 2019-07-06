@@ -2,12 +2,11 @@
 **/.DS_Store
 
 # Project
-output/
-graphs/
-batch_data/
-tf_log/
-data/yang_bsd_8
-data/div2k
+output/*
+graphs/*
+batch_data/*
+tf_log/*
+data/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

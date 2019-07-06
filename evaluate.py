@@ -65,7 +65,7 @@ def main(not_parsed_args):
         for test_data in test_list:
             evaluate_model(model, test_data)
 
-    model.save_model(name="inference_model", output_log=True, eval=False)
+    model.save_model(name="inference_model", output_log=True)
 
 
 def evaluate_bicubic(model, test_data):
