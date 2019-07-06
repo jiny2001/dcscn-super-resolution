@@ -9,6 +9,8 @@ Put your images under data/[your dataset name]/ and specify [your dataset name] 
 
 --augment_level 2-8: will generate flipped / rotated images
 
+Don't move this script or it can't import from helper.
+
 """
 import os
 

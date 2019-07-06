@@ -26,6 +26,7 @@ def main(not_parsed_args):
 
     model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
 
+    # script allows you to split training images into batches in advance.
     if FLAGS.build_batch:
         model.load_datasets(FLAGS.data_dir + "/" + FLAGS.dataset, FLAGS.batch_dir + "/" + FLAGS.dataset,
                             FLAGS.batch_image_size, FLAGS.stride_size)
@@ -113,7 +114,8 @@ def evaluate_model(model, test_data):
     total_psnr = total_ssim = 0
 
     for filename in test_filenames:
-        psnr, ssim = model.do_for_evaluate_with_output(filename, output_directory=FLAGS.output_dir, print_console=False)
+        psnr, ssim, l = model.do_for_evaluate(filename, 
+            output_directory=FLAGS.output_dir, print_console=False, save_output_images=FLAGS.save_results)
         total_psnr += psnr
         total_ssim += ssim
 

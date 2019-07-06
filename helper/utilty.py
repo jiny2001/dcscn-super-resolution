@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 from os.path import isfile, join
-from scipy import misc
+import imageio as misc
 
 from skimage.measure import compare_psnr, compare_ssim
 
@@ -115,8 +115,9 @@ def save_image(filename, image, print_console=False):
     if directory != "" and not os.path.exists(directory):
         os.makedirs(directory)
 
-    image = misc.toimage(image, cmin=0, cmax=255)  # to avoid range rescaling
-    misc.imsave(filename, image)
+    # image = misc.toimage(image, cmin=0, cmax=255)  # to avoid range rescaling
+    # misc.imsave(filename, image)
+    misc.imwrite(filename, image)
 
     if print_console:
         print("Saved [%s]" % filename)
@@ -169,6 +170,7 @@ def convert_ycbcr_to_rgb(ycbcr_image):
     rgb_image = rgb_image.dot(xform.T)
 
     return rgb_image
+
 
 
 def convert_y_and_cbcr_to_rgb(y_image, cbcr_image):
@@ -350,9 +352,19 @@ def xavier_cnn_initializer(shape, uniform=True):
 
 
 def he_initializer(shape):
+    # https://towardsdatascience.com/random-initialization-for-neural-networks-a-thing-of-the-past-bfcdd806bf9e
+    """
+    He-et-al Initialization
+    This method of initializing became famous through a paper submitted in 2015 by He et al, and is similar 
+    to Xavier initialization, with the factor multiplied by two. In this method, the weights are initialized
+    keeping in mind the size of the previous layer which helps in attaining a global minimum of the cost function 
+    faster and more efficiently.The weights are still random but differ in range depending on the size of the
+    previous layer of neurons. This provides a controlled initialisation hence the faster and more efficient 
+    gradient descent.
+    """
     n = shape[0] * shape[1] * shape[2]
-    stddev = math.sqrt(2.0 / n)
-    return tf.truncated_normal(shape=shape, stddev=stddev)
+    stddev = math.sqrt(2.0 / n) # standard deviation decreases as shape increases
+    return tf.truncated_normal(shape=shape, stddev=stddev) # returns random values from a truncated normal distribution
 
 
 def upsample_filter(size):
@@ -383,9 +395,10 @@ def upscale_weight(scale, channels, name="weight"):
 
 
 def weight(shape, stddev=0.01, name="weight", uniform=False, initializer="stddev"):
+    # initialize the weights of the graph as a tf variable ( to ensure non-symmetry )
     if initializer == "xavier":
         initial = xavier_cnn_initializer(shape, uniform=uniform)
-    elif initializer == "he":
+    elif initializer == "he": #this is actually the default one because args.py default argument for initializer is "he".
         initial = he_initializer(shape)
     elif initializer == "uniform":
         initial = tf.random_uniform(shape, minval=-2.0 * stddev, maxval=2.0 * stddev)
@@ -517,10 +530,19 @@ def compute_psnr_and_ssim(image1, image2, border_size=0):
     if border_size > 0:
         image1 = image1[border_size:-border_size, border_size:-border_size, :]
         image2 = image2[border_size:-border_size, border_size:-border_size, :]
+    
 
-    psnr = compare_psnr(image1, image2, data_range=255)
-    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
-                        sigma=1.5, data_range=255)
+    try:
+        psnr = compare_psnr(image1, image2, data_range=255)
+        ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+                            sigma=1.5, data_range=255)
+    except ValueError:
+        # Force them to be float64 so that their PSNR can be compared
+        image1 = image1.astype('float64')
+        image2 = image2.astype('float64')
+        psnr = compare_psnr(image1, image2, data_range=255)
+        ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+                            sigma=1.5, data_range=255)
     return psnr, ssim
 
 

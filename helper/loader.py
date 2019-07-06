@@ -11,7 +11,7 @@ import os
 import random
 
 import numpy as np
-from scipy import misc
+import imageio as misc
 
 from helper import utilty as util
 

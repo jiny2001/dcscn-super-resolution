@@ -2,28 +2,7 @@
 Paper: "Fast and Accurate Image Super Resolution by Deep CNN with Skip Connection and Network in Network"
 Ver: 2.0
 
-Functions for evaluating model performance
-
-Put your images under data/[your dataset name]/ and specify [your dataset name] for --test_dataset.
-This script will create LR images from your test dataset and evaluate the model's performance.
-
---save_results=True: will provide generated HR images and bi-cubic HR images.
-see output/[model_name]/data/[your test data]/ for checking result images.
-
-Also you must put same model args as you trained.
-
-For ex, if you trained like below,
-> python train.py --scale=3
-
-Then you must run evaluate.py like below.
-> python evaluate.py --scale=3 --file=your_image_file_path
-
-
-If you trained like below,
-> python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
-
-Then you must run evaluate.py like below.
-> python evaluate.py --layers=8 --filters=96 --file=your_image_file_path
+Script to test inference speed when loading a saved model
 """
 
 import logging
@@ -45,8 +24,8 @@ def main(not_parsed_args):
         exit()
 
     model = DCSCN.SuperResolution(FLAGS, model_name=FLAGS.model_name)
-    model.build_graph()
-    model.build_summary_saver()
+    model.load_graph()
+    model.build_summary_saver(with_saver=False) # no need because we are not saving any variables
     model.init_all_variables()
 
     if FLAGS.test_dataset == "all":
@@ -56,7 +35,6 @@ def main(not_parsed_args):
 
     # FLAGS.tests refer to the number of training sets to be used
     for i in range(FLAGS.tests):
-        model.load_model(FLAGS.load_model_name, trial=i, output_log=True if FLAGS.tests > 1 else False)
 
         if FLAGS.compute_bicubic:
             for test_data in test_list:
@@ -64,8 +42,6 @@ def main(not_parsed_args):
 
         for test_data in test_list:
             evaluate_model(model, test_data)
-
-    model.save_model(name="inference_model", output_log=True, eval=False)
 
 
 def evaluate_bicubic(model, test_data):

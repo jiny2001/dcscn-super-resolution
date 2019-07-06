@@ -19,7 +19,6 @@ import tensorflow as tf
 
 from helper import loader, tf_graph, utilty as util
 
-BICUBIC_METHOD_STRING = "bicubic"
 
 
 class SuperResolution(tf_graph.TensorflowGraph):
@@ -38,10 +37,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.nin_filters2 = flags.nin_filters2
         self.reconstruct_layers = max(flags.reconstruct_layers, 1)
         self.reconstruct_filters = flags.reconstruct_filters
-        self.resampling_method = BICUBIC_METHOD_STRING
+        self.resampling_method = flags.resampling_method
         self.pixel_shuffler = flags.pixel_shuffler
         self.pixel_shuffler_filters = flags.pixel_shuffler_filters
         self.self_ensemble = flags.self_ensemble
+        self.depthwise_seperable = flags.depthwise_seperable
+        self.bottleneck = flags.bottleneck
 
         # Training Parameters
         self.l2_decay = flags.l2_decay
@@ -68,6 +69,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.training_images = int(math.ceil(flags.training_images / flags.batch_num) * flags.batch_num)
         self.train = None
         self.test = None
+        self.gpu_device_id = flags.gpu_device_id
 
         # Image Processing Parameters
         self.max_value = flags.max_value
@@ -76,12 +78,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.psnr_calc_border_size = flags.psnr_calc_border_size
         if self.psnr_calc_border_size < 0:
             self.psnr_calc_border_size = self.scale
+        self.input_image_width = flags.input_image_width
+        self.input_image_height = flags.input_image_height
 
         # Environment (all directory name should not contain tailing '/'  )
         self.batch_dir = flags.batch_dir
 
         # initialize variables
-        self.name = self.get_model_name(model_name)
+        self.name = self.get_model_name(model_name, name_postfix = flags.name_postfix)
         self.total_epochs = 0
         lr = self.initial_lr
         while lr > flags.end_lr:
@@ -126,10 +130,18 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 name += "_%s" % self.activator
             if self.batch_norm:
                 name += "_BN"
+            if self.depthwise_seperable:
+                name += "_DS"
+            if self.bottleneck:
+                name += "_bottleneck"
             if self.reconstruct_layers >= 1:
                 name += "_R%d" % self.reconstruct_layers
                 if self.reconstruct_filters != 1:
                     name += "F%d" % self.reconstruct_filters
+            if self.input_image_height > 0:
+                name += "_Height%d" % self.input_image_height
+            if self.input_image_width > 0:
+                name += "_Width%d" % self.input_image_width
             if name_postfix is not "":
                 name += "_" + name_postfix
         else:
@@ -183,16 +195,59 @@ class SuperResolution(tf_graph.TensorflowGraph):
             self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(
                 self.max_value)
 
-    def build_graph(self):
+    def load_graph(self, frozen_graph_filename='./model_to_freeze/frozen_model_optimized.pb'):
+        """ load an existing frozen graph into the current graph.
+        TODO: allow user to specify the filepath of the frozen path
+        """
+        self.name =  "frozen_model" #TODO: Generalise this line
+        # We load the protobuf file from the disk and parse it to retrieve the 
+        # unserialized graph_def
+        with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
 
-        self.x = tf.placeholder(tf.float32, shape=[None, None, None, self.channels], name="x")
-        self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="y")
-        self.x2 = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="x2")
+        # load the graph def into the current graph
+        with self.as_default() as graph:
+            tf.import_graph_def(graph_def, name="prefix")
+
+        self.is_training = tf.placeholder(tf.bool, name="is_training")
+        
+        # get input and output tensors
+
+        # input
+        self.x = self.get_tensor_by_name("prefix/x:0")
+        self.x2 = self.get_tensor_by_name("prefix/x2:0")
+        if self.dropout_rate < 1:
+            self.dropout = self.get_tensor_by_name("prefix/dropout_keep_rate:0")
+
+        # output
+        self.y_ = self.get_tensor_by_name('prefix/output:0')
+
+        # close existing session and re-initialize it
+        self.sess.close()
+        super().init_session(self.gpu_device_id)
+
+    def build_graph(self):
+        inference = False
+        # first dimension is always 1 for some reason. Second dimension is image height. Third dimension is image width. Fourth dimension is the number of color channels.
+        if (self.input_image_height > 0 and self.input_image_width > 0):
+            if (inference):
+                self.x = tf.placeholder(tf.float32, shape=[1, self.input_image_height, self.input_image_width, self.channels], name="x")
+                self.y = tf.placeholder(tf.float32, shape=[1, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="y")
+                self.x2 = tf.placeholder(tf.float32, shape=[1, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="x2")
+            else:
+                self.x = tf.placeholder(tf.float32, shape=[None, self.input_image_height, self.input_image_width, self.channels], name="x")
+                self.y = tf.placeholder(tf.float32, shape=[None, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="y")
+                self.x2 = tf.placeholder(tf.float32, shape=[None, self.input_image_height * self.scale , self.input_image_width * self.scale , self.output_channels], name="x2")
+        else:
+            self.x = tf.placeholder(tf.float32, shape=[None, None, None, self.channels], name="x")
+            self.y = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="y")
+            self.x2 = tf.placeholder(tf.float32, shape=[None, None, None, self.output_channels], name="x2")
+
         self.dropout = tf.placeholder(tf.float32, shape=[], name="dropout_keep_rate")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         # building feature extraction layers
-
         output_feature_num = self.filters
         total_output_feature_num = 0
         input_feature_num = self.channels
@@ -202,18 +257,44 @@ class SuperResolution(tf_graph.TensorflowGraph):
             with tf.name_scope("X"):
                 util.add_summaries("output", self.name, self.x, save_stddev=True, save_mean=True)
 
-        for i in range(self.layers):
-            if self.min_filters != 0 and i > 0:
-                x1 = i / float(self.layers - 1)
-                y1 = pow(x1, 1.0 / self.filters_decay_gamma)
-                output_feature_num = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
+        if (self.depthwise_seperable):
+            for i in range(self.layers):
+                if (i > 0):
+                    x1 = i / float(self.layers - 1)
+                    y1 = pow(x1, 1.0 / self.filters_decay_gamma)
+                    output_feature_num = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
 
-            self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
-                            output_feature_num, use_bias=True, activator=self.activator,
-                            use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
-            input_feature_num = output_feature_num
-            input_tensor = self.H[-1]
-            total_output_feature_num += output_feature_num
+                    # self.build_conv("Bottleneck%d" % (i + 1), input_tensor, 1, input_feature_num,
+                    #                 1, use_bias=True, activator=None,
+                    #                 use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+                    # input_tensor = self.H[-1]
+                    # self.build_depthwise_seperable_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, 1,
+                    #                 output_feature_num, use_bias=True, activator=self.activator,
+                    #                 use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+                    self.build_depthwise_seperable_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
+                                    output_feature_num, use_bias=True, activator=self.activator,
+                                    use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+                else:
+                    self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
+                                    output_feature_num, use_bias=True, activator=self.activator,
+                                    use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+                input_feature_num = output_feature_num
+                input_tensor = self.H[-1]
+                total_output_feature_num += output_feature_num
+        else:
+            # original version
+            for i in range(self.layers):
+                if self.min_filters != 0 and i > 0:
+                    x1 = i / float(self.layers - 1)
+                    y1 = pow(x1, 1.0 / self.filters_decay_gamma)
+                    output_feature_num = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
+
+                self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
+                                output_feature_num, use_bias=True, activator=self.activator,
+                                use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+                input_feature_num = output_feature_num
+                input_tensor = self.H[-1]
+                total_output_feature_num += output_feature_num
 
         with tf.variable_scope("Concat"):
             self.H_concat = tf.concat(self.H, 3, name="H_concat")
@@ -229,14 +310,23 @@ class SuperResolution(tf_graph.TensorflowGraph):
             self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
                             dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
 
-            self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
-                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+            if (self.depthwise_seperable):
+                self.build_depthwise_seperable_conv("B2", self.H[-1], 3, self.nin_filters2,
+                                self.nin_filters2, use_bias=True, activator=self.activator,
+                                dropout_rate=self.dropout_rate)
+            else:
+                self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
 
             self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="Concat2"))
             input_channels = self.nin_filters + self.nin_filters2
         else:
-            self.build_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
-                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+            if (self.depthwise_seperable):
+                self.build_depthwise_seperable_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)                
+            else:
+                self.build_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
             input_channels = self.filters
 
         # building upsampling layer
@@ -246,10 +336,18 @@ class SuperResolution(tf_graph.TensorflowGraph):
             else:
                 output_channels = input_channels
             if self.scale == 4:
-                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, input_channels, input_channels)
-                self.build_pixel_shuffler_layer("Up-PS2", self.H[-1], 2, input_channels, output_channels)
+                if (self.bottleneck):
+                    self.build_conv("Up-Bottleneck", self.H[-1], 1, input_channels, output_channels,
+                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+                    self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, output_channels, input_channels, depthwise_seperable=self.depthwise_seperable)
+                    self.build_conv("Up-Bottleneck2", self.H[-1], 1, input_channels, output_channels,
+                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+                    self.build_pixel_shuffler_layer("Up-PS2", self.H[-1], 2, output_channels, output_channels, depthwise_seperable=self.depthwise_seperable)
+                else:
+                    self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, input_channels, input_channels, depthwise_seperable=self.depthwise_seperable)
+                    self.build_pixel_shuffler_layer("Up-PS2", self.H[-1], 2, input_channels, output_channels, depthwise_seperable=self.depthwise_seperable)
             else:
-                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], self.scale, input_channels, output_channels)
+                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], self.scale, input_channels, output_channels, depthwise_seperable=self.depthwise_seperable)
             input_channels = output_channels
         else:
             self.build_transposed_conv("Up-TCNN", self.H[-1], self.scale, input_channels)
@@ -259,8 +357,12 @@ class SuperResolution(tf_graph.TensorflowGraph):
                             dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
             input_channels = self.reconstruct_filters
 
-        self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
-                        self.output_channels)
+        if (self.depthwise_seperable):
+            self.build_depthwise_seperable_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
+                            self.output_channels)
+        else:
+            self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
+                            self.output_channels)
 
         self.y_ = tf.add(self.H[-1], self.x2, name="output")
 
@@ -343,7 +445,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 for i in range(len(grads)):
                     util.add_summaries("", self.name, grads[i], header_name=grads[i].name + "/", save_stddev=True,
                                        save_mean=True)
-
+        
+        # Call backward pass optimizer as usual.
         if self.clipping_norm > 0:
             clipped_grads, _ = tf.clip_by_global_norm(grads, clip_norm=self.clipping_norm)
             grad_var_pairs = zip(clipped_grads, trainables)
@@ -364,6 +467,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         self.training_step += 1
         self.step += 1
+
 
     def log_to_tensorboard(self, test_filename, psnr, save_meta_data=True):
 
@@ -386,6 +490,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             bicubic_image = np.multiply(bicubic_image, self.max_value / 255.0)  # type: np.ndarray
             org_image = np.multiply(org_image, self.max_value / 255.0)  # type: np.ndarray
 
+        # input_image.shape[0] is height, input_image.shape[1] is width, input_image.shape[2] is number of channels
         feed_dict = {self.x: input_image.reshape([1, input_image.shape[0], input_image.shape[1], input_image.shape[2]]),
                      self.x2: bicubic_image.reshape(
                          [1, bicubic_image.shape[0], bicubic_image.shape[1], bicubic_image.shape[2]]),
@@ -455,9 +560,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
                     util.get_now_date(), "{:,}".format(self.step), psnr, ssim,
                     self.training_loss_sum / self.training_step)
             else:
-                line_a = "%s Step:%s PSNR:%f SSIM:%f (Training PSNR:%0.3f)" % (
+                line_a = "%s Step:%s PSNR:%f SSIM:%f (Training PSNR:%0.3f, Training Loss:%0.3f)" % (
                     util.get_now_date(), "{:,}".format(self.step), psnr, ssim,
-                    self.training_psnr_sum / self.training_step)
+                    self.training_psnr_sum / self.training_step, self.training_loss_sum / self.training_step)
             estimated = processing_time * (self.total_epochs - self.epochs_completed) * (
                 self.training_images // self.batch_num)
             h = estimated // (60 * 60)
@@ -488,7 +593,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             return 0, 0
 
         for filename in test_filenames:
-            psnr, ssim = self.do_for_evaluate(filename, print_console=False)
+            psnr, ssim, t = self.do_for_evaluate(filename, print_console=False, save_output_images=False)
             total_psnr += psnr
             total_ssim += ssim
 
@@ -506,17 +611,31 @@ class SuperResolution(tf_graph.TensorflowGraph):
             input_image = np.multiply(input_image, self.max_value / 255.0)  # type: np.ndarray
             bicubic_input_image = np.multiply(bicubic_input_image, self.max_value / 255.0)  # type: np.ndarray
 
+        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
         if self.self_ensemble > 1:
             output = np.zeros([self.scale * h, self.scale * w, 1])
 
             for i in range(self.self_ensemble):
                 image = util.flip(input_image, i)
                 bicubic_image = util.flip(bicubic_input_image, i)
-                y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
-                                                      self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
-                                                                                     self.scale * image.shape[1],
-                                                                                     ch),
-                                                      self.dropout: 1.0, self.is_training: 0})
+                if (self.dropout_rate < 1):
+                    y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
+                                                        self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
+                                                                                        self.scale * image.shape[1],
+                                                                                        ch),
+                                                        self.dropout: 1.0, 
+                                                        self.is_training: 0},
+                                                options=options, 
+                                                run_metadata=run_metadata)
+                else:
+                    y = self.sess.run(self.y_, feed_dict={self.x: image.reshape(1, image.shape[0], image.shape[1], ch),
+                                                        self.x2: bicubic_image.reshape(1, self.scale * image.shape[0],
+                                                                                        self.scale * image.shape[1],
+                                                                                        ch),
+                                                        self.is_training: 0},
+                                                options=options, 
+                                                run_metadata=run_metadata)
                 restored = util.flip(y[0], i, invert=True)
                 output += restored
 
@@ -525,9 +644,17 @@ class SuperResolution(tf_graph.TensorflowGraph):
             y = self.sess.run(self.y_, feed_dict={self.x: input_image.reshape(1, h, w, ch),
                                                   self.x2: bicubic_input_image.reshape(1, self.scale * h,
                                                                                        self.scale * w, ch),
-                                                  self.dropout: 1.0, self.is_training: 0})
+                                                  self.dropout: 1.0, self.is_training: 0},
+                                                options=options, 
+                                                run_metadata=run_metadata)
             output = y[0]
 
+        # function for timelining the model (tag: timeline)
+        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+        with open('./tf_log/inference_timeline.json', 'w') as f:
+            f.write(chrome_trace)
+        
         if self.max_value != 255.0:
             hr_image = np.multiply(output, 255.0 / self.max_value)
         else:
@@ -560,11 +687,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         util.save_image(output_folder + filename + "_result" + extension, image)
 
-    def do_for_evaluate_with_output(self, file_path, output_directory, print_console=False):
-
-        filename, extension = os.path.splitext(file_path)
-        output_directory += "/" + self.name + "/"
-        util.make_dir(output_directory)
+    def do_for_evaluate(self, file_path, output_directory=None, print_console=False, save_output_images=True):
+        if save_output_images:
+            filename, extension = os.path.splitext(file_path)
+            output_directory += "/" + self.name + "/"
+            util.make_dir(output_directory)
 
         true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
 
@@ -578,7 +705,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
             true_ycbcr_image = util.convert_rgb_to_ycbcr(true_image)
 
+            start = time.time()
             output_y_image = self.do(input_y_image, input_bicubic_y_image)
+            end = time.time()
             psnr, ssim = util.compute_psnr_and_ssim(true_ycbcr_image[:, :, 0:1], output_y_image,
                                                     border_size=self.psnr_calc_border_size)
             loss_image = util.get_loss_image(true_ycbcr_image[:, :, 0:1], output_y_image,
@@ -586,13 +715,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
             output_color_image = util.convert_y_and_cbcr_to_rgb(output_y_image, true_ycbcr_image[:, :, 1:3])
 
-            util.save_image(output_directory + file_path, true_image)
-            util.save_image(output_directory + filename + "_input" + extension, input_y_image)
-            util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_y_image)
-            util.save_image(output_directory + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
-            util.save_image(output_directory + filename + "_result" + extension, output_y_image)
-            util.save_image(output_directory + filename + "_result_c" + extension, output_color_image)
-            util.save_image(output_directory + filename + "_loss" + extension, loss_image)
+            if save_output_images:
+                util.save_image(output_directory + file_path, true_image)
+                util.save_image(output_directory + filename + "_input" + extension, input_y_image)
+                util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_y_image)
+                util.save_image(output_directory + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
+                util.save_image(output_directory + filename + "_result" + extension, output_y_image)
+                util.save_image(output_directory + filename + "_result_c" + extension, output_color_image)
+                util.save_image(output_directory + filename + "_loss" + extension, loss_image)
 
         elif true_image.shape[2] == 1 and self.channels == 1:
 
@@ -601,50 +731,19 @@ class SuperResolution(tf_graph.TensorflowGraph):
                                                    alignment=self.scale)
             input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
                                                              resampling_method=self.resampling_method)
+            start = time.time()
             output_image = self.do(input_image, input_bicubic_y_image)
+            end = time.time()
             psnr, ssim = util.compute_psnr_and_ssim(true_image, output_image, border_size=self.psnr_calc_border_size)
-            util.save_image(output_directory + file_path, true_image)
-            util.save_image(output_directory + filename + "_result" + extension, output_image)
+            if save_output_images:
+                util.save_image(output_directory + file_path, true_image)
+                util.save_image(output_directory + filename + "_result" + extension, output_image)
         else:
             return None, None
-
         if print_console:
             print("[%s] PSNR:%f, SSIM:%f" % (filename, psnr, ssim))
-
-        return psnr, ssim
-
-    def do_for_evaluate(self, file_path, print_console=False):
-
-        true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
-
-        if true_image.shape[2] == 3 and self.channels == 1:
-
-            # for color images
-            input_y_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
-                                                     alignment=self.scale, convert_ycbcr=True)
-            true_y_image = util.convert_rgb_to_y(true_image)
-            input_bicubic_y_image = util.resize_image_by_pil(input_y_image, self.scale,
-                                                             resampling_method=self.resampling_method)
-            output_y_image = self.do(input_y_image, input_bicubic_y_image)
-            psnr, ssim = util.compute_psnr_and_ssim(true_y_image, output_y_image,
-                                                    border_size=self.psnr_calc_border_size)
-
-        elif true_image.shape[2] == 1 and self.channels == 1:
-
-            # for monochrome images
-            input_image = loader.build_input_image(true_image, channels=self.channels, scale=self.scale,
-                                                   alignment=self.scale)
-            input_bicubic_y_image = util.resize_image_by_pil(input_image, self.scale,
-                                                             resampling_method=self.resampling_method)
-            output_image = self.do(input_image, input_bicubic_y_image)
-            psnr, ssim = util.compute_psnr_and_ssim(true_image, output_image, border_size=self.psnr_calc_border_size)
-        else:
-            return None, None
-
-        if print_console:
-            print("[%s] PSNR:%f, SSIM:%f" % (file_path, psnr, ssim))
-
-        return psnr, ssim
+        elapsed_time = end - start
+        return psnr, ssim, elapsed_time
 
     def evaluate_bicubic(self, file_path, print_console=False):
 
@@ -699,7 +798,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
             logging.info(status)
         else:
             print(status)
-
     def log_model_analysis(self):
         run_metadata = tf.RunMetadata()
         run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
