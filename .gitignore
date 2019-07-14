@@ -126,3 +126,7 @@ data/bsd200_y/
 testimages/
 
 test/
+
+.vscode/
+
+models/checkpoint
