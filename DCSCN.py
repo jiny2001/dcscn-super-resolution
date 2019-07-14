@@ -42,7 +42,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.pixel_shuffler = flags.pixel_shuffler
         self.pixel_shuffler_filters = flags.pixel_shuffler_filters
         self.self_ensemble = flags.self_ensemble
-
+        self.depthwise_separable = flags.depthwise_separable
+        
         # Training Parameters
         self.l2_decay = flags.l2_decay
         self.optimizer = flags.optimizer
@@ -126,6 +127,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 name += "_%s" % self.activator
             if self.batch_norm:
                 name += "_BN"
+            if self.depthwise_separable:
+                name += "_DS"
             if self.reconstruct_layers >= 1:
                 name += "_R%d" % self.reconstruct_layers
                 if self.reconstruct_filters != 1:
@@ -208,9 +211,14 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 y1 = pow(x1, 1.0 / self.filters_decay_gamma)
                 output_feature_num = int((self.filters - self.min_filters) * (1 - y1) + self.min_filters)
 
-            self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
-                            output_feature_num, use_bias=True, activator=self.activator,
-                            use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+            if (self.depthwise_separable):
+                self.build_depthwise_separable_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
+                                            output_feature_num, use_bias=True, activator=self.activator,
+                                            use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
+            else:
+                self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
+                                output_feature_num, use_bias=True, activator=self.activator,
+                                use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
             input_feature_num = output_feature_num
             input_tensor = self.H[-1]
             total_output_feature_num += output_feature_num
@@ -222,21 +230,32 @@ class SuperResolution(tf_graph.TensorflowGraph):
         # building reconstruction layers ---
 
         if self.use_nin:
-            self.build_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
+            if (self.depthwise_separable):
+                self.build_depthwise_separable_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
                             dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
-            self.receptive_fields -= (self.cnn_size - 1)
-
-            self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
+                self.receptive_fields -= (self.cnn_size - 1)
+                self.build_depthwise_separable_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+                self.build_depthwise_separable_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+            else:
+                self.build_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
                             dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
-
-            self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
-                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+                self.receptive_fields -= (self.cnn_size - 1)
+                self.build_conv("B1", self.H_concat, 1, total_output_feature_num, self.nin_filters2,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+                self.build_conv("B2", self.H[-1], 3, self.nin_filters2, self.nin_filters2,
+                                dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
 
             self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="Concat2"))
             input_channels = self.nin_filters + self.nin_filters2
         else:
-            self.build_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
-                            dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+            if (self.depthwise_separable):
+                self.build_depthwise_separable_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
+                    dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
+            else:
+                self.build_conv("C", self.H_concat, 1, total_output_feature_num, self.filters,
+                    dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
             input_channels = self.filters
 
         # building upsampling layer
@@ -246,10 +265,16 @@ class SuperResolution(tf_graph.TensorflowGraph):
             else:
                 output_channels = input_channels
             if self.scale == 4:
-                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, input_channels, input_channels)
-                self.build_pixel_shuffler_layer("Up-PS2", self.H[-1], 2, input_channels, output_channels)
+                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], 2, 
+                                                input_channels, input_channels, 
+                                                depthwise_separable=self.depthwise_separable)
+                self.build_pixel_shuffler_layer("Up-PS2", self.H[-1], 2, 
+                                                input_channels, output_channels, 
+                                                depthwise_separable=self.depthwise_separable)
             else:
-                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], self.scale, input_channels, output_channels)
+                self.build_pixel_shuffler_layer("Up-PS", self.H[-1], self.scale, 
+                                                input_channels, output_channels, 
+                                                depthwise_separable=self.depthwise_separable)
             input_channels = output_channels
         else:
             self.build_transposed_conv("Up-TCNN", self.H[-1], self.scale, input_channels)
@@ -259,7 +284,11 @@ class SuperResolution(tf_graph.TensorflowGraph):
                             dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
             input_channels = self.reconstruct_filters
 
-        self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
+        if (self.depthwise_separable):
+            self.build_depthwise_separable_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], 
+                        self.cnn_size, input_channels, self.output_channels)
+        else:
+            self.build_conv("R-CNN%d" % self.reconstruct_layers, self.H[-1], self.cnn_size, input_channels,
                         self.output_channels)
 
         self.y_ = tf.add(self.H[-1], self.x2, name="output")
