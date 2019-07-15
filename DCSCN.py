@@ -572,6 +572,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
         output_folder += "/" + self.name + "/"
         util.save_image(output_folder + filename + extension, org_image)
 
+        scaled_image = util.resize_image_by_pil(org_image, self.scale, resampling_method=self.resampling_method)
+        util.save_image(output_folder + filename + "_bicubic" + extension, scaled_image)
+
         if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
             input_y_image = util.convert_rgb_to_y(org_image)
             scaled_image = util.resize_image_by_pil(input_y_image, self.scale, resampling_method=self.resampling_method)
@@ -596,6 +599,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
         util.make_dir(output_directory)
 
         true_image = util.set_image_alignment(util.load_image(file_path, print_console=False), self.scale)
+        input_image = util.resize_image_by_pil(true_image, 1.0/ self.scale, resampling_method=self.resampling_method)
+        input_bicubic_image = util.resize_image_by_pil(input_image, self.scale, resampling_method=self.resampling_method)
+        util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_image)
 
         if true_image.shape[2] == 3 and self.channels == 1:
 
@@ -617,7 +623,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
             util.save_image(output_directory + file_path, true_image)
             util.save_image(output_directory + filename + "_input" + extension, input_y_image)
-            util.save_image(output_directory + filename + "_input_bicubic" + extension, input_bicubic_y_image)
+            util.save_image(output_directory + filename + "_input_bicubic_y" + extension, input_bicubic_y_image)
             util.save_image(output_directory + filename + "_true_y" + extension, true_ycbcr_image[:, :, 0:1])
             util.save_image(output_directory + filename + "_result" + extension, output_y_image)
             util.save_image(output_directory + filename + "_result_c" + extension, output_color_image)
