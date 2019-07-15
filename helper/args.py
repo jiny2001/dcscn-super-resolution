@@ -33,6 +33,7 @@ flags.DEFINE_integer("pixel_shuffler_filters", 0,
                      "Num of Pixel Shuffler output channels. 0 means use same channels as input.")
 flags.DEFINE_integer("self_ensemble", 8, "Number of using self ensemble method. [1 - 8]")
 flags.DEFINE_boolean("batch_norm", False, "use batch normalization after each CNNs")
+flags.DEFINE_boolean("depthwise_separable", False, "use depthwise seperable convolutions for each CNN layer instead")
 
 # Training Parameters
 flags.DEFINE_boolean("bicubic_init", True, "make bicubic interpolation values as initial input for x2")
