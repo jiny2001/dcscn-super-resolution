@@ -9,12 +9,7 @@ Please note this model is updated version of the paper.
 If you want to check original source code and results of the paper, please see https://github.com/jiny2001/dcscn-super-resolution/tree/ver1.
 
 Additional support for using depthwise separable convolutions in place of each convolutional layer was provided by Chew Jing Wei
-(https://github.com/tehtea). Depthwise separable convolutions reduce the complexity of your model because it splits the computation
-of a traditional convolutional layer into two steps. The first step is to perform a depthwise convolution, meaning each input 
-channel is convolved in isolation of other channels, then the second step is to perform a pointwise convolution, where the stacked output
-of each depthwise filter is convolved by a 1x1 filter which determines the final number of output channels in that layer.
-If you do not understand this explanation, please refer to https://towardsdatascience.com/a-basic-introduction-to-separable-convolutions-b99ec3102728
-as I think the author did a better job at explaining it than me!
+(https://github.com/tehtea).
 """
 
 import logging
