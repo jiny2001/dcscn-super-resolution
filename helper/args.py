@@ -72,6 +72,8 @@ flags.DEFINE_integer("psnr_calc_border_size", -1,
                      "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
 flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Makes training significantly faster but "
                                            "the patches are limited to be on the grid.")
+# flags.DEFINE_integer("input_image_width", -1, "The width of the input image. Put -1 if you do not want to have a fixed input size")
+# flags.DEFINE_integer("input_image_height", -1, "The height of the input image. Put -1 if you do not want to hae a fixed input size")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")
@@ -93,6 +95,9 @@ flags.DEFINE_integer("save_images_num", 20, "Number of CNN images saved")
 flags.DEFINE_boolean("save_meta_data", False, "")
 flags.DEFINE_integer("gpu_device_id", 0, "Device ID of GPUs which will be used to compute.")
 
+# frozen model configurations
+flags.DEFINE_boolean("frozenInference", False, "Flag for whether the model to evaluate is frozen.")
+flags.DEFINE_string("frozen_graph_path", './model_to_freeze/frozen_model_optimized.pb', "the path to a frozen model if performing inference from it")
 
 def get():
     print("Python Interpreter version:%s" % sys.version[:3])

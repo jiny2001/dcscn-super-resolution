@@ -7,6 +7,14 @@ See Detail: https://github.com/jiny2001/dcscn-super-resolution/
 
 Please note this model is updated version of the paper.
 If you want to check original source code and results of the paper, please see https://github.com/jiny2001/dcscn-super-resolution/tree/ver1.
+
+Additional support for using depthwise separable convolutions in place of each convolutional layer was provided by Chew Jing Wei
+(https://github.com/tehtea). Depthwise separable convolutions reduce the complexity of your model because it splits the computation
+of a traditional convolutional layer into two steps. The first step is to perform a depthwise convolution, meaning each input 
+channel is convolved in isolation of other channels, then the second step is to perform a pointwise convolution, where the stacked output
+of each depthwise filter is convolved by a 1x1 filter which determines the final number of output channels in that layer.
+If you do not understand this explanation, please refer to https://towardsdatascience.com/a-basic-introduction-to-separable-convolutions-b99ec3102728
+as I think the author did a better job at explaining it than me!
 """
 
 import logging
@@ -77,6 +85,8 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.psnr_calc_border_size = flags.psnr_calc_border_size
         if self.psnr_calc_border_size < 0:
             self.psnr_calc_border_size = self.scale
+        # self.input_image_width = flags.input_image_width
+        # self.input_image_height = flags.input_image_height
 
         # Environment (all directory name should not contain tailing '/'  )
         self.batch_dir = flags.batch_dir
@@ -133,6 +143,10 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 name += "_R%d" % self.reconstruct_layers
                 if self.reconstruct_filters != 1:
                     name += "F%d" % self.reconstruct_filters
+            # if self.input_image_height > 0:
+            #     name += "_Height%d" % self.input_image_height
+            # if self.input_image_width > 0:
+            #     name += "_Width%d" % self.input_image_width
             if name_postfix is not "":
                 name += "_" + name_postfix
         else:
@@ -185,6 +199,39 @@ class SuperResolution(tf_graph.TensorflowGraph):
         for i in range(self.batch_num):
             self.batch_input[i], self.batch_input_bicubic[i], self.batch_true[i] = self.train.load_batch_image(
                 self.max_value)
+
+    def load_graph(self, frozen_graph_filename='./model_to_freeze/frozen_model_optimized.pb'):
+        """ 
+        load an existing frozen graph into the current graph.
+        """
+        # self.name =  "frozen_model" #TODO: Generalise this line
+
+        # We load the protobuf file from the disk and parse it to retrieve the 
+        # unserialized graph_def
+        with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+
+         # load the graph def into the current graph
+        with self.as_default() as graph:
+            tf.import_graph_def(graph_def, name="prefix")
+
+        self.is_training = tf.placeholder(tf.bool, name="is_training")
+
+        # get input and output tensors
+
+         # input
+        self.x = self.get_tensor_by_name("prefix/x:0")
+        self.x2 = self.get_tensor_by_name("prefix/x2:0")
+        if self.dropout_rate < 1:
+            self.dropout = self.get_tensor_by_name("prefix/dropout_keep_rate:0")
+
+         # output
+        self.y_ = self.get_tensor_by_name('prefix/output:0')
+
+         # close existing session and re-initialize it
+        self.sess.close()
+        super().init_session()
 
     def build_graph(self):
 
