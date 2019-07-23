@@ -80,8 +80,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.psnr_calc_border_size = flags.psnr_calc_border_size
         if self.psnr_calc_border_size < 0:
             self.psnr_calc_border_size = self.scale
-        # self.input_image_width = flags.input_image_width
-        # self.input_image_height = flags.input_image_height
 
         # Environment (all directory name should not contain tailing '/'  )
         self.batch_dir = flags.batch_dir
@@ -138,10 +136,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 name += "_R%d" % self.reconstruct_layers
                 if self.reconstruct_filters != 1:
                     name += "F%d" % self.reconstruct_filters
-            # if self.input_image_height > 0:
-            #     name += "_Height%d" % self.input_image_height
-            # if self.input_image_width > 0:
-            #     name += "_Width%d" % self.input_image_width
             if name_postfix is not "":
                 name += "_" + name_postfix
         else:
