@@ -27,6 +27,12 @@ As a ver2, we also implemented these features.
 
 * Add extra layers / Update default parameters for better PSNR result
 
+* __Depthwise Separable Convolutions__ from ["Xception: Deep Learning with Depthwise Separable Convolutions"](https://arxiv.org/abs/1610.02357). Added by [Chew Jing Wei](https://github.com/tehtea)
+Depthwise separable convolutions reduce the complexity of your model because it splits the computation
+of a traditional convolutional layer into two steps. The first step is to perform a depthwise convolution, meaning each input 
+channel is convolved in isolation of other channels, then the second step is to perform a pointwise convolution, where the stacked output
+of each depthwise filter is convolved by a 1x1 filter which determines the final number of output channels in that layer. For a more complete yet beginner-friendly explanation, please see https://towardsdatascience.com/a-basic-introduction-to-separable-convolutions-b99ec3102728
+
 ## Sample result
 
 | Input image (orange) and x4 bicubic | Our DCSCN output |
