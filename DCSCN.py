@@ -24,6 +24,9 @@ from helper import loader, tf_graph, utilty as util
 
 BICUBIC_METHOD_STRING = "bicubic"
 
+INPUT_IMAGE_DIR = "input"
+INTERPOLATED_IMAGE_DIR = "interpolated"
+TRUE_IMAGE_DIR = "true"
 
 class SuperResolution(tf_graph.TensorflowGraph):
     def __init__(self, flags, model_name=""):
@@ -46,6 +49,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.pixel_shuffler_filters = flags.pixel_shuffler_filters
         self.self_ensemble = flags.self_ensemble
         self.depthwise_separable = flags.depthwise_separable
+        self.threads = flags.threads
         
         # Training Parameters
         self.l2_decay = flags.l2_decay
@@ -165,11 +169,15 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         self.train = loader.BatchDataSets(self.scale, batch_dir, batch_image_size, stride_size, channels=self.channels,
                                           resampling_method=self.resampling_method)
-
-        if os.path.exists(batch_dir):
-            self.train.load_batch_counts()
+        if not self.train.is_batch_exist():
+            util.make_dir(batch_dir)
+            util.clean_dir(batch_dir)
+            util.make_dir(batch_dir + "/" + INPUT_IMAGE_DIR)
+            util.make_dir(batch_dir + "/" + INTERPOLATED_IMAGE_DIR)
+            util.make_dir(batch_dir + "/" + TRUE_IMAGE_DIR)
+            self.train.build_batch_threaded(data_dir, batch_dir, self.threads)
         else:
-            self.train.build_batch(data_dir)
+            self.train.load_batch_counts()
         self.train.load_all_batch_images()
 
     def init_epoch_index(self):
