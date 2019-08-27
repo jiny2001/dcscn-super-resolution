@@ -9,9 +9,11 @@ import configparser
 import logging
 import os
 import random
+import time
 
 import numpy as np
 from scipy import misc
+from multiprocessing import Process
 
 from helper import utilty as util
 
@@ -82,21 +84,60 @@ class BatchDataSets:
         self.batch_dir = batch_dir
         self.batch_index = None
 
-    def build_batch(self, data_dir):
+    def build_batch_threaded(self, data_dir, batch_dir, threads):
+        th0 = Process(target=self.build_batch, args=(data_dir,0,threads,))
+        th1 = Process(target=self.build_batch, args=(data_dir,1,threads,))
+        th2 = Process(target=self.build_batch, args=(data_dir,2,threads,))
+        th3 = Process(target=self.build_batch, args=(data_dir,3,threads,))
+        th4 = Process(target=self.build_batch, args=(data_dir,4,threads,))
+        th5 = Process(target=self.build_batch, args=(data_dir,5,threads,))
+        th6 = Process(target=self.build_batch, args=(data_dir,6,threads,))
+        th7 = Process(target=self.build_batch, args=(data_dir,7,threads,))
+        if(threads > 0):
+            th0.start()
+        if(threads > 1):
+            th1.start()
+        if(threads > 2):
+            th2.start()
+        if(threads > 3):
+            th3.start()
+        if(threads > 4):
+            th4.start()
+        if(threads > 5):
+            th5.start()
+        if(threads > 6):
+            th6.start()
+        if(threads > 7):
+            th7.start()
+
+        if(threads > 0):
+            th0.join()
+        if(threads > 1):
+            th1.join()
+        if(threads > 2):
+            th2.join()
+        if(threads > 3):
+            th3.join()
+        if(threads > 4):
+            th4.join()
+        if(threads > 5):
+            th5.join()
+        if(threads > 6):
+            th6.join()
+        if(threads > 7):
+            th7.join()
+
+        self.count = len(os.listdir(batch_dir))
+
+        
+    def build_batch(self, data_dir, thread, threads):
         """ Build batch images and. """
 
         print("Building batch images for %s..." % self.batch_dir)
         filenames = util.get_files_in_directory(data_dir)
         images_count = 0
-
-        util.make_dir(self.batch_dir)
-        util.clean_dir(self.batch_dir)
-        util.make_dir(self.batch_dir + "/" + INPUT_IMAGE_DIR)
-        util.make_dir(self.batch_dir + "/" + INTERPOLATED_IMAGE_DIR)
-        util.make_dir(self.batch_dir + "/" + TRUE_IMAGE_DIR)
-
-        processed_images = 0
-        for filename in filenames:
+        processed_images = int(len(filenames)/threads*(thread))
+        for filename in filenames[int(len(filenames)/threads*thread):int(len(filenames)/threads*(thread+1))]:
             output_window_size = self.batch_image_size * self.scale
             output_window_stride = self.stride * self.scale
 
@@ -117,10 +158,11 @@ class BatchDataSets:
             true_batch_images = util.get_split_images(true_image, output_window_size, stride=output_window_stride)
 
             for i in range(input_count):
-                self.save_input_batch_image(images_count, input_batch_images[i])
-                self.save_interpolated_batch_image(images_count, input_interpolated_batch_images[i])
-                self.save_true_batch_image(images_count, true_batch_images[i])
+                self.save_input_batch_image(thread*1000000+images_count, input_batch_images[i])
+                self.save_interpolated_batch_image(thread*1000000+images_count, input_interpolated_batch_images[i])
+                self.save_true_batch_image(thread*1000000+images_count, true_batch_images[i])
                 images_count += 1
+            images_count = 0
             processed_images += 1
             if processed_images % 10 == 0:
                 print('.', end='', flush=True)
