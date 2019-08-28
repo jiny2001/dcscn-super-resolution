@@ -162,7 +162,6 @@ class BatchDataSets:
                 self.save_interpolated_batch_image(thread*1000000+images_count, input_interpolated_batch_images[i])
                 self.save_true_batch_image(thread*1000000+images_count, true_batch_images[i])
                 images_count += 1
-            images_count = 0
             processed_images += 1
             if processed_images % 10 == 0:
                 print('.', end='', flush=True)
