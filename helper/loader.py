@@ -160,47 +160,14 @@ class BatchDataSets:
         self.batch_index = None
 
     def build_batch_threaded(self, data_dir, batch_dir, threads):
-        th0 = Process(target=self.build_batch, args=(data_dir,0,threads,))
-        th1 = Process(target=self.build_batch, args=(data_dir,1,threads,))
-        th2 = Process(target=self.build_batch, args=(data_dir,2,threads,))
-        th3 = Process(target=self.build_batch, args=(data_dir,3,threads,))
-        th4 = Process(target=self.build_batch, args=(data_dir,4,threads,))
-        th5 = Process(target=self.build_batch, args=(data_dir,5,threads,))
-        th6 = Process(target=self.build_batch, args=(data_dir,6,threads,))
-        th7 = Process(target=self.build_batch, args=(data_dir,7,threads,))
-        if(threads > 0):
-            th0.start()
-        if(threads > 1):
-            th1.start()
-        if(threads > 2):
-            th2.start()
-        if(threads > 3):
-            th3.start()
-        if(threads > 4):
-            th4.start()
-        if(threads > 5):
-            th5.start()
-        if(threads > 6):
-            th6.start()
-        if(threads > 7):
-            th7.start()
+        threadlist = []
+        for i in range(threads):
+            threadlist.append(Process(target=self.build_batch, args=(data_dir,i,threads,)))
+            threadlist[i].start()
 
-        if(threads > 0):
-            th0.join()
-        if(threads > 1):
-            th1.join()
-        if(threads > 2):
-            th2.join()
-        if(threads > 3):
-            th3.join()
-        if(threads > 4):
-            th4.join()
-        if(threads > 5):
-            th5.join()
-        if(threads > 6):
-            th6.join()
-        if(threads > 7):
-            th7.join()
+        for i in range(threads):
+            if(threads > i):
+                threadlist[i].join()
 
         self.count = len(os.listdir(batch_dir))
 
@@ -274,7 +241,7 @@ class BatchDataSets:
             self.count = 0
             return
 
-    def load_all_batch_images(self):
+    def load_all_batch_images(self, threads):
 
         self.count = len(os.listdir(self.batch_dir+"/input"))
         print("Allocating memory for all batch images.")
@@ -287,127 +254,56 @@ class BatchDataSets:
             shape=[self.count, self.batch_image_size * self.scale, self.batch_image_size * self.scale, 1],
             dtype=np.uint8)  # type: np.ndarray
 
-        print("Loading all batch images.")
-        q1 = Queue()
-        q2 = Queue()
-        q3 = Queue()
-        q4 = Queue()
-        q5 = Queue()
-        q6 = Queue()
-        q7 = Queue()
-        q8 = Queue()
-        threads = 8
         batch_dir = self.batch_dir
-        if(threads > 0):
-            p1 = Process(target=loadall, args=(q1,self.count,threads,0,batch_dir,))
-            p1.start()
-        if(threads > 1):
-            p2 = Process(target=loadall, args=(q2,self.count,threads,1,batch_dir,))
-            p2.start()
-        if(threads > 2):
-            p3 = Process(target=loadall, args=(q3,self.count,threads,2,batch_dir,))
-            p3.start()
-        if(threads > 3):
-            p4 = Process(target=loadall, args=(q4,self.count,threads,3,batch_dir,))
-            p4.start()
-        if(threads > 4):
-            p5 = Process(target=loadall, args=(q5,self.count,threads,4,batch_dir,))
-            p5.start()
-        if(threads > 5):
-            p6 = Process(target=loadall, args=(q6,self.count,threads,5,batch_dir,))
-            p6.start()
-        if(threads > 6):
-            p7 = Process(target=loadall, args=(q7,self.count,threads,6,batch_dir,))
-            p7.start()
-        if(threads > 7):
-            p8 = Process(target=loadall, args=(q8,self.count,threads,7,batch_dir,))
-            p8.start()
-        #self.input_images[i] = self.load_input_batch_image(i)
-        #self.input_interpolated_images[i] = self.load_interpolated_batch_image(i)
-        #self.true_images[i] = self.load_true_batch_image(i)
-        count = 0
-        for u in range(0,math.floor(self.count/threads)):
-            if(threads>0):
-                self.input_images[count] = q1.get()
-            if(threads>1):
-                self.input_images[count+1] = q2.get()
-            if(threads>2):
-                self.input_images[count+2] = q3.get()
-            if(threads>3):
-                self.input_images[count+3] = q4.get()
-            if(threads>4):
-                self.input_images[count+4] = q5.get()
-            if(threads>5):
-                self.input_images[count+5] = q6.get()
-            if(threads>6):
-                self.input_images[count+6] = q7.get()
-            if(threads>7):
-                self.input_images[count+7] = q8.get()
-            count += threads
-            if(u%10000 == 0):
-                print('.', end='', flush=True)
-        count = 0
-        print("\n")
-        for u in range(0,math.floor(self.count/threads)):
-            if(threads>0):
-                self.input_interpolated_images[count] = q1.get()
-            if(threads>1):
-                self.input_interpolated_images[count+1] = q2.get()
-            if(threads>2):
-                self.input_interpolated_images[count+2] = q3.get()
-            if(threads>3):
-                self.input_interpolated_images[count+3] = q4.get()
-            if(threads>4):
-                self.input_interpolated_images[count+4] = q5.get()
-            if(threads>5):
-                self.input_interpolated_images[count+5] = q6.get()
-            if(threads>6):
-                self.input_interpolated_images[count+6] = q7.get()
-            if(threads>7):
-                self.input_interpolated_images[count+7] = q8.get()
-            count += threads
-            if(u%10000 == 0):
-                print('.', end='', flush=True)
-        count = 0
-        print("\n")
-        for u in range(0,math.floor(self.count/threads)):
-            if(threads>0):
-                self.true_images[count] = q1.get()
-            if(threads>1):
-                self.true_images[count+1] = q2.get()
-            if(threads>2):
-                self.true_images[count+2] = q3.get()
-            if(threads>3):
-                self.true_images[count+3] = q4.get()
-            if(threads>4):
-                self.true_images[count+4] = q5.get()
-            if(threads>5):
-                self.true_images[count+5] = q6.get()
-            if(threads>6):
-                self.true_images[count+6] = q7.get()
-            if(threads>7):
-                self.true_images[count+7] = q8.get()
-            count += threads
-            if(u%10000 == 0):
-                print('.', end='', flush=True)
-        if(threads>0):
-            p1.join()
-        if(threads>1):
-            p2.join()
-        if(threads>2):
-            p3.join()
-        if(threads>3):
-            p4.join()
-        if(threads>4):
-            p5.join()
-        if(threads>5):
-            p6.join()
-        if(threads>6):
-            p7.join()
-        if(threads>7):
-            p8.join()
+        queuelist = []
+        threadlist = []
         
+        print("Loading all batch images.")
+        for i in range(threads):
+            queuelist.append(Queue())
+        if(threads == i):
+            threadlist.append(Process(target=loadall, args=(queuelist[i],self.count,threads,0,batch_dir,)))
+            threadlist[i].start()
         count = 0
+        
+        #recieve input images
+        for u in range(0,math.floor(self.count/threads)):
+            for i in range(threads):
+                if(threads==i):
+                    self.input_images[count] = queuelist[i].get()
+                count+=1
+            if(u%10000 == 0):
+                print('.', end='', flush=True)
+        count = 0
+        print("\n")
+
+
+        #recieve interpolated images
+        for u in range(0,math.floor(self.count/threads)):
+            for i in range(threads):
+                if(threads==i):
+                    self.input_interpolated_images[count] = queuelist[i].get()
+                count+=1
+            if(u%10000 == 0):
+                print('.', end='', flush=True)
+        count = 0
+        print("\n")
+
+        #recieve true images
+        for u in range(0,math.floor(self.count/threads)):
+            for i in range(threads):
+                if(threads==i):
+                    self.true_images[count] = queuelist[i].get()
+                count+=1
+            if(u%10000 == 0):
+                print('.', end='', flush=True)
+        count = 0
+        print("\n")
+
+        #shut down threads
+        for i in range(threads):
+            if(threads == i):
+                threadlist[i].join()
         
         print("\n")
         print("Load finished.")
