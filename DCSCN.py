@@ -29,19 +29,6 @@ INPUT_IMAGE_DIR = "input"
 INTERPOLATED_IMAGE_DIR = "interpolated"
 TRUE_IMAGE_DIR = "true"
 
-def make_parallel(fn, num_gpus, **kwargs):
-    in_splits = {}
-    for k, v in kwargs.items():
-        in_splits[k] = tf.split(v, num_gpus)
-
-    out_split = []
-    for i in range(num_gpus):
-        with tf.device(tf.DeviceSpec(device_type="GPU", device_index=i)):
-            with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
-                out_split.append(fn(**{k : v[i] for k, v in in_splits.items()}))
-
-    return tf.concat(out_split, axis=0)
-
 class SuperResolution(tf_graph.TensorflowGraph):
     def __init__(self, flags, model_name=""):
 
@@ -192,7 +179,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             self.train.build_batch_threaded(data_dir, batch_dir, self.threads)
         else:
             self.train.load_batch_counts()
-        self.train.load_all_batch_images()
+        self.train.load_all_batch_images(self.threads)
 
     def init_epoch_index(self):
 
@@ -263,6 +250,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             with tf.name_scope("X"):
                 util.add_summaries("output", self.name, self.x, save_stddev=True, save_mean=True)
 
+
         for i in range(self.layers):
             if self.min_filters != 0 and i > 0:
                 x1 = i / float(self.layers - 1)
@@ -273,7 +261,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
                 self.build_depthwise_separable_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
                                             output_feature_num, use_bias=True, activator=self.activator,
                                             use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
-            else:
+            else:   
                 self.build_conv("CNN%d" % (i + 1), input_tensor, self.cnn_size, input_feature_num,
                                 output_feature_num, use_bias=True, activator=self.activator,
                                 use_batch_norm=self.batch_norm, dropout_rate=self.dropout_rate)
@@ -281,9 +269,9 @@ class SuperResolution(tf_graph.TensorflowGraph):
             input_tensor = self.H[-1]
             total_output_feature_num += output_feature_num
 
-        with tf.variable_scope("Concat"):
-            self.H_concat = tf.concat(self.H, 3, name="H_concat")
-        self.features += " Total: (%d)" % total_output_feature_num
+            with tf.variable_scope("Concat"):
+                self.H_concat = tf.concat(self.H, 3, name="H_concat")
+            self.features += " Total: (%d)" % total_output_feature_num
 
         # building reconstruction layers ---
 
@@ -444,7 +432,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         feed_dict = {self.x: self.batch_input, self.x2: self.batch_input_bicubic, self.y: self.batch_true,
                      self.lr_input: self.lr, self.dropout: self.dropout_rate, self.is_training: 1}
-
         _, image_loss, mse = self.sess.run([self.training_optimizer, self.image_loss, self.mse], feed_dict=feed_dict)
         self.training_loss_sum += image_loss
         self.training_psnr_sum += util.get_psnr(mse, max_value=self.max_value)
