@@ -269,8 +269,7 @@ class BatchDataSets:
         #recieve input images
         for u in range(0,math.floor(self.count/threads)):
             for i in range(threads):
-                if(threads==i):
-                    self.input_images[count] = queuelist[i].get()
+                self.input_images[count] = queuelist[i].get()
                 count+=1
             if(u%10000 == 0):
                 print('.', end='', flush=True)
@@ -281,8 +280,7 @@ class BatchDataSets:
         #recieve interpolated images
         for u in range(0,math.floor(self.count/threads)):
             for i in range(threads):
-                if(threads==i):
-                    self.input_interpolated_images[count] = queuelist[i].get()
+                self.input_interpolated_images[count] = queuelist[i].get()
                 count+=1
             if(u%10000 == 0):
                 print('.', end='', flush=True)
@@ -292,8 +290,7 @@ class BatchDataSets:
         #recieve true images
         for u in range(0,math.floor(self.count/threads)):
             for i in range(threads):
-                if(threads==i):
-                    self.true_images[count] = queuelist[i].get()
+                self.true_images[count] = queuelist[i].get()
                 count+=1
             if(u%10000 == 0):
                 print('.', end='', flush=True)
@@ -302,8 +299,7 @@ class BatchDataSets:
 
         #shut down threads
         for i in range(threads):
-            if(threads == i):
-                threadlist[i].join()
+            threadlist[i].join()
         
         print("\n")
         print("Load finished.")
