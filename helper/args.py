@@ -14,6 +14,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # Model (network) Parameters
+flags.DEFINE_integer("threads", 1, "How many threads to use during build_batch")
 flags.DEFINE_integer("scale", 2, "Scale factor for Super Resolution (should be 2 or more)")
 flags.DEFINE_integer("layers", 12, "Number of layers of feature xxtraction CNNs")
 flags.DEFINE_integer("filters", 196, "Number of filters of first feature-extraction CNNs")
