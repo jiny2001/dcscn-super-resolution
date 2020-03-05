@@ -261,7 +261,7 @@ class BatchDataSets:
         print("Loading all batch images.")
         for i in range(threads):
             queuelist.append(Queue())
-            threadlist.append(Process(target=loadall, args=(queuelist[i],self.count,threads,0,batch_dir,)))
+            threadlist.append(Process(target=loadall, args=(queuelist[i],self.count,threads,i,batch_dir,)))
             threadlist[i].start()
         count = 0
         
