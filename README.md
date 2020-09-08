@@ -74,16 +74,16 @@ Some pre-trained models are included.
 
 ```
 # evaluating set14 dataset
-python evaluate.py --test_dataset=set14 --save_results=true
+python3 evaluate.py --test_dataset=set14 --save_results=true
 
 # evaluating set5 dataset with small model
-python evaluate.py --test_dataset=set5 --save_results=true --layers=8 --filters=96
+python3 evaluate.py --test_dataset=set5 --save_results=true --layers=8 --filters=96
 
 # evaluating all(set5,set14,bsd100) dataset
-python evaluate.py --test_dataset=all
+python3 evaluate.py --test_dataset=all
 
 # evaluate our compact version of DCSCN (c-DCSCN)
-python evaluate.py --scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --test_dataset=all
+python3 evaluate.py --scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --batch_image_size=32 --pixel_shuffler_filters=1 --test_dataset=all
 ```
 
 ## Apply to your own image
@@ -94,10 +94,10 @@ If you want to apply this model on your image001.png file, try those.
 
 ```
 # apply super resolution on image001.jpg (then see results at output directory)
-python sr.py --file=your_file.png
+python3 sr.py --file=your_file.png
 
 # apply super resolution with small model
-python sr.py --file=your_file.png --layers=8 --filters=96
+python3 sr.py --file=your_file.png --layers=8 --filters=96
 ```
 
 ## How to train with your own dataset
@@ -108,13 +108,13 @@ Once training parameters has been given, **"model name"** will be defined by the
 
 ```
 # training for x2 with bsd200 dataset
-python train.py --dataset=bsd200 --training_images=80000
+python3 train.py --dataset=bsd200 --training_images=80000
 
 # training for x3 scale with your own dataset
-python train.py --scale=3 --dataset=[your own data directory]
+python3 train.py --scale=3 --dataset=[your own data directory]
 
 # training for x2 with transposed CNN instead of using Pixel Shuffler layer for up-sampling
-python train.py --dataset=bsd200 --training_images=80000 --pixel_shuffler=false
+python3 train.py --dataset=bsd200 --training_images=80000 --pixel_shuffler=false
 ```
 
 * Each training and evaluation summary will be added to **log.txt**.
@@ -129,15 +129,15 @@ In case 1)you're using CPU, 2)training data is small or 3)just want to test if i
 
 ```
 # training for x2 with smaller model
-python train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
+python3 train.py --dataset=bsd200 --layers=8 --filters=96 --training_images=30000
 
 # training for x2 with tiny model for test
-python train.py --dataset=set5 --layers=4 --filters=32 --use_nin=false --training_images=10000
+python3 train.py --dataset=set5 --layers=4 --filters=32 --use_nin=false --training_images=10000
 ```
 
 We propose compact verison of DCSCN (c-DCSCN) in my paper. When you want to try training with this model, use these option below. (x2 scale)
 ```
-python train.py --scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --dataset=yang_bsd_8 --training_images=228688 --batch_image_size=32 --build_batch=True --do_benchmark=True --pixel_shuffler_filters=1
+python3 train.py --scale=2 --layers=7 --filters=32 --min_filters=8 --filters_decay_gamma=1.2 --nin_filters=24 --nin_filters2=8 --reconstruct_layers=0 --self_ensemble=1 --dataset=yang_bsd_8 --training_images=228688 --batch_image_size=32 --build_batch=True --do_benchmark=True --pixel_shuffler_filters=1
 ```
 
 
@@ -197,13 +197,13 @@ To have better model, you should use larger training data like (BSD200 + Yang91)
 
 ```
 # build 4x augmented dataset for yang91 dataset (will add flipped images)
-python augmentation.py --dataset=yang91 --augment_level=4
+python3 augmentation.py --dataset=yang91 --augment_level=4
 
 # build 8x augmented dataset for yang91 dataset (will add flipped and rotated images)
-python augmentation.py --dataset=yang91 --augment_level=8
+python3 augmentation.py --dataset=yang91 --augment_level=8
 
 # train with augmented data
-python train.py --dataset=yang91_4
+python3 train.py --dataset=yang91_4
 ```
 
 ## How to calculate PSNR / SSIM
