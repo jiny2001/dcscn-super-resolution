@@ -12,12 +12,14 @@ import time
 from os import listdir
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from PIL import Image
 from os.path import isfile, join
-from scipy import misc
 
-from skimage.measure import compare_psnr, compare_ssim
+from scipy import misc
+import imageio
+from skimage.metrics import peak_signal_noise_ratio
+from skimage.metrics import structural_similarity
 
 
 class Timer:
@@ -112,11 +114,14 @@ def save_image(filename, image, print_console=False):
         image = image.reshape(image.shape[0], image.shape[1])
 
     directory = os.path.dirname(filename)
+    image = image.astype(np.uint8)
     if directory != "" and not os.path.exists(directory):
         os.makedirs(directory)
-
-    image = misc.toimage(image, cmin=0, cmax=255)  # to avoid range rescaling
-    misc.imsave(filename, image)
+    if len(image.shape) >= 3 and image.shape[2] == 3:
+        image = Image.fromarray(image, mode="RGB")  # to avoid range rescaling (cmin=0, cmax=255)
+    else:
+        image = Image.fromarray(image)  # to avoid range rescaling (cmin=0, cmax=255)
+    imageio.imwrite(filename, image)
 
     if print_console:
         print("Saved [%s]" % filename)
@@ -236,7 +241,7 @@ def load_image(filename, width=0, height=0, channels=0, alignment=0, print_conso
         raise LoadError("File not found [%s]" % filename)
 
     try:
-        image = np.atleast_3d(misc.imread(filename))
+        image = np.atleast_3d(imageio.imread(filename))
 
         if (width != 0 and image.shape[1] != width) or (height != 0 and image.shape[0] != height):
             raise LoadError("Attributes mismatch")
@@ -518,8 +523,8 @@ def compute_psnr_and_ssim(image1, image2, border_size=0):
         image1 = image1[border_size:-border_size, border_size:-border_size, :]
         image2 = image2[border_size:-border_size, border_size:-border_size, :]
 
-    psnr = compare_psnr(image1, image2, data_range=255)
-    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+    psnr = peak_signal_noise_ratio(image1, image2, data_range=255)
+    ssim = structural_similarity(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
                         sigma=1.5, data_range=255)
     return psnr, ssim
 
@@ -563,7 +568,7 @@ def print_num_of_total_parameters(output_detail=False, output_to_logging=False):
         shape = variable.get_shape()
         variable_parameters = 1
         for dim in shape:
-            variable_parameters *= dim.value
+            variable_parameters *= dim
         total_parameters += variable_parameters
         if len(shape) == 1:
             parameters_string += ("%s %d, " % (variable.name, variable_parameters))

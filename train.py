@@ -11,7 +11,7 @@ Testing Environment: Python 3.6.1, tensorflow >= 1.3.0
 import logging
 import sys
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import DCSCN
 from helper import args, utilty as util

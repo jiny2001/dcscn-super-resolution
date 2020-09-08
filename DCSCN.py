@@ -18,7 +18,7 @@ import os
 import time
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from helper import loader, tf_graph, utilty as util
 

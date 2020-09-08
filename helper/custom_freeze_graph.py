@@ -1,7 +1,7 @@
 import os
 import argparse
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 # from: https://blog.metaflow.fr/tensorflow-how-to-freeze-a-model-and-serve-it-with-a-python-api-d4f3596b3adc
 

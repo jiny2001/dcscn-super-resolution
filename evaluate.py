@@ -28,7 +28,8 @@ Then you must run evaluate.py like below.
 
 import logging
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
 
 import time
 import DCSCN

@@ -11,7 +11,7 @@ Put your images under data/[your dataset name]/ and specify [your dataset name] 
 """
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from helper import args, utilty as util
 

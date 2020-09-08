@@ -9,7 +9,7 @@ import logging
 import os
 import shutil
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from helper import utilty as util
 
@@ -127,7 +127,7 @@ class TensorflowGraph(tf.Graph):
                 h = self.build_activator(h, output_feature_num, activator, base_name=name)
 
             if dropout_rate < 1.0:
-                h = tf.nn.dropout(h, self.dropout, name="dropout")
+                h = tf.nn.dropout(h, rate=1 - self.dropout, name="dropout")
 
             self.H.append(h)
 
@@ -190,7 +190,7 @@ class TensorflowGraph(tf.Graph):
                 h = self.build_activator(h, output_feature_num, activator, base_name=name)
 
             if dropout_rate < 1.0:
-                h = tf.nn.dropout(h, self.dropout, name="dropout")
+                h = tf.nn.dropout(h, rate=1 - self.dropout, name="dropout")
 
             self.H.append(h)
 
