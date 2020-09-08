@@ -6,7 +6,7 @@ functions for sharing arguments and their default values
 
 import sys
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -21,7 +21,7 @@ flags.DEFINE_integer("last_cnn_size", 1, "Size of Last CNN filters")
 flags.DEFINE_integer("layers", 7, "Number of layers of CNNs")
 flags.DEFINE_boolean("nin", True, "Use Network In Network")
 flags.DEFINE_boolean("bicubic_init", True, "make bicubic interpolation values as initial input of x2")
-flags.DEFINE_float("dropout", 0.8, "For dropout value for  value. Don't use if it's 1.0.")
+flags.DEFINE_float("dropout", 0.8, "dropout keep rate. Don't use if it's 1.0.")
 flags.DEFINE_string("activator", "prelu", "Activator. can be [relu, leaky_relu, prelu, sigmoid, tanh]")
 flags.DEFINE_float("filters_decay_gamma", 1.2, "Gamma")
 

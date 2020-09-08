@@ -54,13 +54,13 @@ Three pre-trained models (compact, normal, large) are included.
 
 ```
 # evaluating set14 dataset with normal model
-python evaluate.py --test_dataset set14 --dataset yang_bsd_4 --filters_decay_gamma 1.5 --save_results True
+python3 evaluate.py --test_dataset set14 --dataset yang_bsd_4 --filters_decay_gamma 1.5
 
 # evaluating set5 dataset with compact model
-python evaluate.py --test_dataset set5 --dataset yang_bsd_4 --save_results True --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
+python3 evaluate.py --test_dataset set5 --dataset yang_bsd_4 --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
 
 # evaluating all(set5,set14,bsd100) dataset with large model
-python evaluate.py --test_dataset all --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3
+python3 evaluate.py --test_dataset all --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3
 ```
 
 ## Apply to your own image
@@ -71,16 +71,16 @@ If you want to apply this model on your image001.png file, try those.
 
 ```
 # apply super resoltion on image001.jpg (then see results at output directory)
-python sr.py --file your_file.png --dataset yang_bsd_4 --filters_decay_gamma 1.5 
+python3 sr.py --file your_file.png --dataset yang_bsd_4 --filters_decay_gamma 1.5 
 
 # apply super resoltion with compact model
-python sr.py --file your_file.png --dataset yang_bsd_4 --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
+python3 sr.py --file your_file.png --dataset yang_bsd_4 --filters 32 --min_filters 8 --nin_filters 24 --nin_filters2 8
 
 # apply super resoltion with large model
-python sr.py --file your_file.png --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3
+python3 sr.py --file your_file.png --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3
 
 # apply super resoltion with large model for scale x3
-python sr.py --file your_file.png --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3 --scale 3
+python3 sr.py --file your_file.png --dataset yang_bsd_8 --layers 10 --filters 196 --min_filters 48 --last_cnn_size 3 --scale 3
 ```
 
 ## How to train
@@ -91,13 +91,13 @@ Each training and evaluation result will be added to **log.txt**.
 
 ```
 # training with yang91 dataset
-python train.py --dataset yang91
+python3 train.py --dataset yang91
 
 # training with larger filters and deeper layers
-python train.py --dataset yang91 --filters 128 --layers 10
+python3 train.py --dataset yang91 --filters 128 --layers 10
 
 # after training has done, you can apply super resolution on your own image file. (put same args which you used on training)
-python sr.py --file your_file.png --dataset yang91 --filters 128 --layers 10
+python3 sr.py --file your_file.png --dataset yang91 --filters 128 --layers 10
 ```
 
 ## Data augmentation
@@ -108,13 +108,13 @@ To have better model, you should use larger training data like (BSD200 + Yang91)
 
 ```
 # build 4x augmented dataset for yang91 dataset (will add flipped images)
-python augmentation.py --dataset yang91 --augment_level 4
+python3 augmentation.py --dataset yang91 --augment_level 4
 
 # build 8x augmented dataset for yang91 dataset (will add flipped and rotated images)
-python augmentation.py --dataset yang91 --augment_level 8
+python3 augmentation.py --dataset yang91 --augment_level 8
 
 # train with augmented data
-python train.py --dataset yang91_4
+python3 train.py --dataset yang91_4
 ```
 
 

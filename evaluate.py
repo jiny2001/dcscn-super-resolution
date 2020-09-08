@@ -5,12 +5,12 @@ functions for evaluating results
 """
 
 import logging
-
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import DCSCN
 from helper import args, utilty as util
 
+tf.compat.v1.disable_eager_execution()
 args.flags.DEFINE_boolean("save_results", False, "Save result, bicubic and loss images")
 
 FLAGS = args.get()

@@ -6,7 +6,7 @@ DCSCN: functions for data augmentation
 import os
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from helper import args, utilty as util
 

@@ -6,11 +6,12 @@ Github: https://github.com/jiny2001/dcscn-image-super-resolution
 Apply Super Resolution for image file: Python 3.6.1, tensorflow 1.2.0
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import DCSCN
 from helper import args
 
+tf.compat.v1.disable_eager_execution()
 args.flags.DEFINE_string("file", "image.jpg", "Target filename")
 
 FLAGS = args.get()

@@ -12,12 +12,13 @@ import time
 from os import listdir
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from PIL import Image
 from os.path import isfile, join
 from scipy import misc
-from skimage.measure import compare_psnr, compare_ssim
-
+from skimage.metrics import peak_signal_noise_ratio
+from skimage.metrics import structural_similarity
+import imageio
 
 class Timer:
     def __init__(self, timer_count=100):
@@ -105,7 +106,7 @@ def set_logging(filename, stream_log_level, file_log_level, tf_log_level):
     logging.logProcesses = 0
 
 
-def save_image(filename, image, print_console=True):
+def save_image(filename, image, print_console=False):
     if len(image.shape) >= 3 and image.shape[2] == 1:
         image = image.reshape(image.shape[0], image.shape[1])
 
@@ -113,8 +114,12 @@ def save_image(filename, image, print_console=True):
     if directory != "" and not os.path.exists(directory):
         os.makedirs(directory)
 
-    image = misc.toimage(image, cmin=0, cmax=255)  # to avoid range rescaling
-    misc.imsave(filename, image)
+    image = image.astype(np.uint8)
+    if len(image.shape) >= 3 and image.shape[2] == 3:
+        image = Image.fromarray(image, mode="RGB")
+    else:
+        image = Image.fromarray(image)
+    imageio.imwrite(filename, image)
 
     if print_console:
         print("Saved [%s]" % filename)
@@ -253,7 +258,7 @@ def resize_image_by_pil(image, scale, resampling_method="bicubic"):
 def load_image(filename, width=0, height=0, channels=0, alignment=0, print_console=True):
     if not os.path.isfile(filename):
         raise LoadError("File not found [%s]" % filename)
-    image = misc.imread(filename)
+    image = imageio.imread(filename)
 
     if len(image.shape) == 2:
         image = image.reshape(image.shape[0], image.shape[1], 1)
@@ -469,11 +474,10 @@ def compute_psnr_and_ssim(image1, image2, border_size=0):
         image1 = image1[border_size:-border_size, border_size:-border_size, :]
         image2 = image2[border_size:-border_size, border_size:-border_size, :]
 
-    psnr = compare_psnr(image1, image2, data_range=255)
-    ssim = compare_ssim(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
+    psnr = peak_signal_noise_ratio(image1, image2, data_range=255)
+    ssim = structural_similarity(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
                         sigma=1.5, data_range=255)
     return psnr, ssim
-
 
 def print_filter_weights(tensor):
     print("Tensor[%s] shape=%s" % (tensor.name, str(tensor.get_shape())))
@@ -514,7 +518,7 @@ def print_num_of_total_parameters(output_detail=False, output_to_logging=False):
         shape = variable.get_shape()
         variable_parameters = 1
         for dim in shape:
-            variable_parameters *= dim.value
+            variable_parameters *= dim
         total_parameters += variable_parameters
         if len(shape) == 1:
             parameters_string += ("%s %d, " % (variable.name, variable_parameters))

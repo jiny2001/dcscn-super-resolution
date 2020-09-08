@@ -13,7 +13,7 @@ import time
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from helper import loader, utilty as util
 
@@ -193,7 +193,7 @@ class SuperResolution:
                             name=name)
 
             if use_dropout and self.dropout != 1.0:
-                h = tf.nn.dropout(h, self.dropout_input, name="dropout")
+                h = tf.nn.dropout(h, rate=1 - self.dropout_input, name="dropout")
 
             if self.save_weights:
                 util.add_summaries("weight", self.name, w, save_stddev=True, save_mean=True)
