@@ -45,7 +45,7 @@ Our model, DCSCN was much lighter than other Deep Learning based SISR models whi
 ## Requirements
 
 python >= 3.5
-tensorflow >= 1.1.0, scipy, numpy, pillow and scikit-image
+tensorflow >= 2.0.0, scipy, numpy, pillow imageio, and scikit-image
 
 
 ## Result of PSNR

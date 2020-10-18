@@ -109,7 +109,7 @@ def set_logging(filename, stream_log_level, file_log_level, tf_log_level):
     tf.logging.set_verbosity(tf_log_level)
 
 
-def save_image(filename, image, print_console=False):
+def save_image(filename, image, print_console=True):
     if len(image.shape) >= 3 and image.shape[2] == 1:
         image = image.reshape(image.shape[0], image.shape[1])
 
@@ -121,6 +121,8 @@ def save_image(filename, image, print_console=False):
         image = Image.fromarray(image, mode="RGB")  # to avoid range rescaling (cmin=0, cmax=255)
     else:
         image = Image.fromarray(image)  # to avoid range rescaling (cmin=0, cmax=255)
+    if not isinstance(image, np.ndarray):
+        image = np.array(image)
     imageio.imwrite(filename, image)
 
     if print_console:
