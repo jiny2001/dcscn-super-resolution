@@ -193,7 +193,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
         """ 
         load an existing frozen graph into the current graph.
         """
-        # self.name =  "frozen_model" #TODO: Generalise this line
 
         # We load the protobuf file from the disk and parse it to retrieve the 
         # unserialized graph_def
@@ -207,18 +206,16 @@ class SuperResolution(tf_graph.TensorflowGraph):
 
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
-        # get input and output tensors
-
-         # input
+        # get input tensors
         self.x = self.get_tensor_by_name("prefix/x:0")
         self.x2 = self.get_tensor_by_name("prefix/x2:0")
         if self.dropout_rate < 1:
             self.dropout = self.get_tensor_by_name("prefix/dropout_keep_rate:0")
 
-         # output
+        # get output tensor
         self.y_ = self.get_tensor_by_name('prefix/output:0')
 
-         # close existing session and re-initialize it
+        # close existing session and re-initialize it
         self.sess.close()
         super().init_session()
 
@@ -231,7 +228,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         # building feature extraction layers
-
         output_feature_num = self.filters
         total_output_feature_num = 0
         input_feature_num = self.channels
@@ -263,8 +259,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             self.H_concat = tf.concat(self.H, 3, name="H_concat")
         self.features += " Total: (%d)" % total_output_feature_num
 
-        # building reconstruction layers ---
-
+        # building reconstruction layers
         if self.use_nin:
             if (self.depthwise_separable):
                 self.build_depthwise_separable_conv("A1", self.H_concat, 1, total_output_feature_num, self.nin_filters,
@@ -294,7 +289,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
                     dropout_rate=self.dropout_rate, use_bias=True, activator=self.activator)
             input_channels = self.filters
 
-        # building upsampling layer
+        # building upsampling layers
         if self.pixel_shuffler:
             if self.pixel_shuffler_filters != 0:
                 output_channels = self.pixel_shuffler_filters
@@ -342,7 +337,6 @@ class SuperResolution(tf_graph.TensorflowGraph):
         """
 
         self.lr_input = tf.placeholder(tf.float32, shape=[], name="LearningRate")
-
         diff = tf.subtract(self.y_, self.y, "diff")
 
         if self.use_l1_loss:
@@ -435,9 +429,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
         if self.enable_log is False:
             return
 
-        # todo
         save_meta_data = False
-
         org_image = util.set_image_alignment(util.load_image(test_filename, print_console=False), self.scale)
 
         if len(org_image.shape) >= 3 and org_image.shape[2] == 3 and self.channels == 1:
@@ -459,7 +451,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
                      self.is_training: 0}
 
         if save_meta_data:
-            # profiler = tf.profiler.Profile(self.sess.graph)
+            # profiler = tf.profiler.Profile(self.sess.graph) #@ToDo
 
             run_metadata = tf.RunMetadata()
             run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
@@ -470,14 +462,7 @@ class SuperResolution(tf_graph.TensorflowGraph):
             filename = self.checkpoint_dir + "/" + self.name + "_metadata.txt"
             with open(filename, "w") as out:
                 out.write(str(run_metadata))
-
-            # filename = self.checkpoint_dir + "/" + self.name + "_memory.txt"
-            # tf.profiler.write_op_log(
-            # 	tf.get_default_graph(),
-            # 	log_dir=self.checkpoint_dir,
-            # 	#op_log=op_log,
-            # 	run_meta=run_metadata)
-
+            
             tf.contrib.tfprof.model_analyzer.print_model_analysis(
                 tf.get_default_graph(), run_meta=run_metadata,
                 tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
@@ -781,9 +766,4 @@ class SuperResolution(tf_graph.TensorflowGraph):
                                                                         self.lr_input: self.lr,
                                                                         self.dropout: self.dropout_rate},
                                 options=run_options, run_metadata=run_metadata)
-
-        # tf.contrib.tfprof.model_analyzer.print_model_analysis(
-        #   tf.get_default_graph(),
-        #   run_meta=run_metadata,
-        #   tfprof_options=tf.contrib.tfprof.model_analyzer.PRINT_ALL_TIMING_MEMORY)
         self.first_training = False

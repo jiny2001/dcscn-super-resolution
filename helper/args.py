@@ -72,8 +72,6 @@ flags.DEFINE_integer("psnr_calc_border_size", -1,
                      "Cropping border size for calculating PSNR. if < 0, use 2 + scale for default.")
 flags.DEFINE_boolean("build_batch", False, "Build pre-processed input batch. Makes training significantly faster but "
                                            "the patches are limited to be on the grid.")
-# flags.DEFINE_integer("input_image_width", -1, "The width of the input image. Put -1 if you do not want to have a fixed input size")
-# flags.DEFINE_integer("input_image_height", -1, "The height of the input image. Put -1 if you do not want to hae a fixed input size")
 
 # Environment (all directory name should not contain '/' after )
 flags.DEFINE_string("checkpoint_dir", "models", "Directory for checkpoints")

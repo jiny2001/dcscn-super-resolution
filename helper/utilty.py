@@ -29,12 +29,15 @@ class Timer:
         self.counts = np.zeros(timer_count)
         self.timer_count = timer_count
 
+
     def start(self, timer_id):
         self.start_times[timer_id] = time.time()
+
 
     def end(self, timer_id):
         self.times[timer_id] += time.time() - self.start_times[timer_id]
         self.counts[timer_id] += 1
+
 
     def print(self):
         for i in range(self.timer_count):
@@ -44,8 +47,6 @@ class Timer:
                 total += self.times[i]
                 print("Total of %d: %s" % (i, "{:,}".format(total)))
 
-
-# utilities for save / load
 
 class LoadError(Exception):
     def __init__(self, message):
@@ -525,6 +526,10 @@ def compute_psnr_and_ssim(image1, image2, border_size=0):
         image1 = image1[border_size:-border_size, border_size:-border_size, :]
         image2 = image2[border_size:-border_size, border_size:-border_size, :]
 
+    if len(image1.shape) == 3 and image1.shape[2] == 1:
+        image1 = np.reshape(image1, [image1.shape[0],image1.shape[1]])
+    if len(image2.shape) == 3 and image2.shape[2] == 1:
+        image2 = np.reshape(image2, [image2.shape[0],image2.shape[1]])
     psnr = peak_signal_noise_ratio(image1, image2, data_range=255)
     ssim = structural_similarity(image1, image2, win_size=11, gaussian_weights=True, multichannel=True, K1=0.01, K2=0.03,
                         sigma=1.5, data_range=255)
